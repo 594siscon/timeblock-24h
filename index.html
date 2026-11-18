@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>時光方塊 · 24H 時間管理</title>
+
+  <!-- PWA & iOS Safari Support -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#2563EB" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="時光方塊" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand">
+          <span class="brand-logo" aria-hidden="true">
+            <img src="./icons/icon.svg" alt="" width="28" height="28" />
+          </span>
+          <div class="brand-text">
+            <span class="brand-title">時光方塊</span>
+            <span class="brand-badge">24H</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="date-nav">
+          <button type="button" class="icon-btn" id="btnPrevDay" title="前一天" aria-label="前一天">‹</button>
+          <button type="button" class="date-display-btn" id="btnDateDisplay" title="選擇日期">
+            <span class="date-main" id="currentDateLabel">今日</span>
+            <span class="date-sub" id="currentDateSub">今天</span>
+          </button>
+          <input type="date" id="datePickerInput" class="sr-only-date" aria-label="選擇日期" />
+          <button type="button" class="icon-btn" id="btnNextDay" title="後一天" aria-label="後一天">›</button>
+        </div>
+        <button type="button" class="btn-pill" id="btnToday">今天</button>
+      </div>
+
+      <div class="header-right">
+        <div class="zoom-group desktop-only" title="調整時間軸高度密度">
+          <button type="button" class="zoom-btn" data-zoom="48">緊湊</button>
+          <button type="button" class="zoom-btn is-active" data-zoom="64">標準</button>
+          <button type="button" class="zoom-btn" data-zoom="88">寬鬆</button>
+        </div>
+        <button type="button" class="sync-status-btn" id="btnSyncModal" title="雲端即時同步設定">
+          <span class="sync-dot" id="syncStatusDot"></span>
+          <span class="sync-btn-text" id="syncStatusText">雲端同步</span>
+        </button>
+        <button type="button" class="icon-btn mobile-only" id="btnMobileStats" title="今日統計" aria-label="今日統計">📊</button>
+        <button type="button" class="icon-btn" id="btnThemeToggle" title="切換深淺色" aria-label="切換深淺色">🌙</button>
+      </div>
+    </header>
+
+    <!-- Main 3-Column Workspace (Responsive 1-Column on Mobile) -->
+    <main class="workspace">
+      <!-- Left Sidebar (Desktop Only): Categories & Draggable Activity Templates -->
+      <aside class="sidebar-left desktop-only">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">活動方塊庫</h2>
+            <p class="panel-hint">拖曳方塊至右側 24 小時表</p>
+          </div>
+          <div class="panel-header-actions">
+            <button type="button" class="btn-sm-secondary" data-open-categories title="管理活動類別">類別</button>
+            <button type="button" class="btn-sm-primary" data-add-template title="新增活動方塊">＋ 新增</button>
+          </div>
+        </div>
+
+        <div class="category-filters" id="categoryFiltersDesktop"></div>
+
+        <div class="template-list" id="templateListDesktop"></div>
+
+        <div class="sidebar-footer-tip">
+          <span>💡 預設 1 小時，拖曳方塊上下邊緣可每 <b>15 分鐘</b>調整高度。雙擊空白處也可快速新增。</span>
+        </div>
+      </aside>
+
+      <!-- Center: 24-Hour Timeline -->
+      <section class="timeline-section" aria-label="24小時時間表">
+        <div class="timeline-scroll" id="timelineScroll">
+          <div class="timeline-container">
+            <div class="timeline-hours" id="timelineHours"></div>
+            <div class="timeline-grid" id="timelineGrid">
+              <div class="timeline-slots" id="timelineSlots"></div>
+              <div class="timeline-blocks" id="timelineBlocks"></div>
+              <div class="drop-preview" id="dropPreview" hidden></div>
+              <div class="now-line" id="nowLine" hidden>
+                <span class="now-dot"></span>
+                <span class="now-label" id="nowLabel"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Sidebar (Desktop Only): Daily Stats & Tools -->
+      <aside class="sidebar-right desktop-only">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">今日時間分配</h2>
+            <p class="panel-hint">以 24 小時為基準統計</p>
+          </div>
+        </div>
+
+        <div class="stats-panel" id="statsContentDesktop"></div>
+
+        <div class="tools-section">
+          <h3 class="tools-heading">快捷操作</h3>
+          <div class="tools-grid">
+            <button type="button" class="tool-btn" id="btnCopyYesterday">📋 複製昨日排程</button>
+            <button type="button" class="tool-btn is-danger-text" id="btnClearDay">🗑️ 清空當日排程</button>
+          </div>
+
+          <h3 class="tools-heading">備份與跨裝置轉移</h3>
+          <div class="tools-grid">
+            <button type="button" class="tool-btn" id="btnExportData">⬇️ 匯出 JSON 備份</button>
+            <button type="button" class="tool-btn" id="btnImportData">⬆️ 匯入 JSON 備份</button>
+            <input type="file" id="importFileInput" accept="application/json" hidden />
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Mobile Bottom Draggable Activity Dock (iOS / Mobile Only) -->
+    <div class="mobile-dock mobile-only" aria-label="可拖曳活動方塊列">
+      <div class="mobile-dock-bar">
+        <span class="mobile-dock-hint">👆 往上拖曳方塊填入時間表</span>
+        <div class="mobile-dock-actions">
+          <button type="button" class="btn-xs-secondary" data-open-categories>類別</button>
+          <button type="button" class="btn-xs-primary" data-add-template>＋ 新增</button>
+          <button type="button" class="btn-xs-secondary" id="btnOpenMobileDrawer">展開 ▲</button>
+        </div>
+      </div>
+      <div class="mobile-dock-scroll" id="mobileDockList"></div>
+    </div>
+
+    <!-- Mobile Full Drawer for Filtering & Managing Activity Templates -->
+    <div class="drawer-backdrop mobile-only" id="mobileDrawerBackdrop" hidden></div>
+    <div class="mobile-drawer mobile-only" id="mobileDrawer">
+      <div class="drawer-handle"></div>
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">全部活動方塊</h2>
+          <p class="panel-hint">長按方塊即可拖曳到 24 小時表</p>
+        </div>
+        <div class="panel-header-actions">
+          <button type="button" class="btn-sm-secondary" data-open-categories>管理類別</button>
+          <button type="button" class="btn-sm-primary" data-add-template>＋ 新增</button>
+          <button type="button" class="icon-btn-sm" id="btnCloseMobileDrawer" aria-label="關閉">✕</button>
+        </div>
+      </div>
+      <div class="category-filters" id="categoryFiltersMobile"></div>
+      <div class="template-list drawer-template-list" id="templateListMobile"></div>
+    </div>
+  </div>
+
+  <!-- Floating Drag Ghost & Live Time Tooltip -->
+  <div class="drag-ghost" id="dragGhost" hidden></div>
+  <div class="live-time-tooltip" id="liveTimeTooltip" hidden></div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+  <!-- Modal 1: Edit / Create Time Block -->
+  <div class="modal-backdrop" id="blockModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="blockModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="blockModalTitle">編輯活動方塊</h3>
+        <button type="button" class="icon-btn-sm" data-close-modal="blockModal" aria-label="關閉">✕</button>
+      </div>
+      <form id="blockForm" class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="blockTitleInput">活動名稱</label>
+          <input type="text" id="blockTitleInput" class="form-input" placeholder="例如：深度工作、運動、閱讀..." required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">活動類別</label>
+          <div class="cat-picker-grid" id="blockCategoryPicker"></div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="blockStartSelect">開始時間</label>
+            <select id="blockStartSelect" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="blockEndSelect">結束時間</label>
+            <select id="blockEndSelect" class="form-select"></select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">快速設定時長（15 分鐘為單位）</label>
+          <div class="duration-chips" id="blockDurationChips">
+            <button type="button" class="dur-chip" data-dur="15">15分</button>
+            <button type="button" class="dur-chip" data-dur="30">30分</button>
+            <button type="button" class="dur-chip" data-dur="45">45分</button>
+            <button type="button" class="dur-chip" data-dur="60">1小時</button>
+            <button type="button" class="dur-chip" data-dur="90">1.5小時</button>
+            <button type="button" class="dur-chip" data-dur="120">2小時</button>
+            <button type="button" class="dur-chip" data-dur="180">3小時</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="blockNoteInput">備註（選填）</label>
+          <textarea id="blockNoteInput" class="form-textarea" rows="2" placeholder="記錄細節或目標..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-danger" id="btnDeleteBlockModal">刪除</button>
+          <div class="modal-footer-right">
+            <button type="button" class="btn-secondary" data-close-modal="blockModal">取消</button>
+            <button type="submit" class="btn-primary">儲存</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Manage Categories -->
+  <div class="modal-backdrop" id="categoryModal" hidden>
+    <div class="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="categoryModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="categoryModalTitle">管理活動類別</h3>
+        <button type="button" class="icon-btn-sm" data-close-modal="categoryModal" aria-label="關閉">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="cat-manager-list" id="categoryManagerList"></div>
+
+        <hr class="modal-divider" />
+
+        <form id="categoryForm" class="cat-form">
+          <div class="form-row-cat">
+            <div class="form-group flex-1">
+              <label class="form-label" for="catNameInput">類別名稱</label>
+              <input type="text" id="catNameInput" class="form-input" placeholder="例如：專案、家庭、創作..." required />
+            </div>
+            <div class="form-group cat-icon-field">
+              <label class="form-label" for="catIconInput">圖示</label>
+              <input type="text" id="catIconInput" class="form-input text-center" maxlength="4" value="🏷️" />
+            </div>
+            <div class="form-group cat-color-field">
+              <label class="form-label" for="catColorInput">顏色</label>
+              <input type="color" id="catColorInput" class="form-color" value="#3B82F6" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">快速選色</label>
+            <div class="swatch-row" id="catColorSwatches"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">常用圖示</label>
+            <div class="swatch-row" id="catIconSwatches"></div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="catFormCancelEditBtn" hidden>取消編輯</button>
+            <div class="modal-footer-right">
+              <button type="submit" class="btn-primary" id="catFormSubmitBtn">新增類別</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Create / Edit Activity Template -->
+  <div class="modal-backdrop" id="templateModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="templateModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="templateModalTitle">新增活動方塊</h3>
+        <button type="button" class="icon-btn-sm" data-close-modal="templateModal" aria-label="關閉">✕</button>
+      </div>
+      <form id="templateForm" class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="tplTitleInput">活動名稱</label>
+          <input type="text" id="tplTitleInput" class="form-input" placeholder="例如：英文聽力、程式開發、重訓..." required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tplCategorySelect">所屬類別</label>
+          <select id="tplCategorySelect" class="form-select"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tplDurationSelect">拖入時預設時長</label>
+          <select id="tplDurationSelect" class="form-select"></select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-danger" id="btnDeleteTemplateModal" hidden>刪除</button>
+          <div class="modal-footer-right">
+            <button type="button" class="btn-secondary" data-close-modal="templateModal">取消</button>
+            <button type="submit" class="btn-primary">儲存</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Mobile Statistics & Tools Modal -->
+  <div class="modal-backdrop" id="statsModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="statsModalTitle">今日時間分配</h3>
+        <button type="button" class="icon-btn-sm" data-close-modal="statsModal" aria-label="關閉">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="statsContentModal"></div>
+        <hr class="modal-divider" />
+        <div class="mobile-stats-actions">
+          <button type="button" class="tool-btn" data-mobile-tool="btnCopyYesterday">📋 複製昨日排程</button>
+          <button type="button" class="tool-btn" data-mobile-tool="btnExportData">⬇️ 匯出備份</button>
+          <button type="button" class="tool-btn" data-mobile-tool="btnImportData">⬆️ 匯入備份</button>
+          <button type="button" class="tool-btn is-danger-text" data-mobile-tool="btnClearDay">🗑️ 清空當日</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Cloud Sync (Supabase Realtime) -->
+  <div class="modal-backdrop" id="syncModal" hidden>
+    <div class="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="syncModalTitle">☁️ 電腦 ↔ iPhone 即時自動同步</h3>
+        <button type="button" class="icon-btn-sm" data-close-modal="syncModal" aria-label="關閉">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sync-banner" id="syncBanner">
+          <span class="sync-dot" id="syncModalDot"></span>
+          <div class="sync-banner-text">
+            <div class="sync-banner-title" id="syncBannerTitle">尚未登入雲端帳號</div>
+            <div class="sync-banner-sub" id="syncBannerSub">登入後，電腦與 iPhone 的所有修改都會即時自動同步</div>
+          </div>
+        </div>
+
+        <!-- Logged-in Panel -->
+        <div id="syncLoggedInPanel" hidden>
+          <div class="sync-account-card">
+            <div class="sync-account-email" id="syncUserEmail"></div>
+            <div class="sync-account-meta" id="syncLastTime">即時同步已啟用</div>
+          </div>
+          <div class="sync-actions-grid">
+            <button type="button" class="tool-btn" id="btnSyncPullNow">⬇️ 立即從雲端拉取</button>
+            <button type="button" class="tool-btn" id="btnSyncPushNow">⬆️ 立即上傳本機</button>
+            <button type="button" class="tool-btn" id="btnCopySyncLink">🔗 複製 iPhone 快速設定連結</button>
+            <button type="button" class="tool-btn is-danger-text" id="btnSyncSignOut">🚪 登出帳號</button>
+          </div>
+        </div>
+
+        <!-- Auth Form (when not signed in) -->
+        <div id="syncAuthPanel">
+          <form id="syncAuthForm" class="sync-auth-form">
+            <div class="form-group">
+              <label class="form-label" for="syncEmailInput">電子郵件（Email）</label>
+              <input type="email" id="syncEmailInput" class="form-input" placeholder="you@example.com" autocomplete="email" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="syncPasswordInput">密碼（至少 6 碼）</label>
+              <input type="password" id="syncPasswordInput" class="form-input" placeholder="請輸入密碼" minlength="6" autocomplete="current-password" required />
+            </div>
+            <div class="sync-auth-btns">
+              <button type="submit" class="btn-primary flex-1" id="btnSyncSignIn">登入並啟用同步</button>
+              <button type="button" class="btn-secondary" id="btnSyncSignUp">註冊新帳號</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="sync-error-box" id="syncErrorBox" hidden></div>
+
+        <hr class="modal-divider" />
+
+        <!-- Supabase Connection Settings -->
+        <details class="sync-config-details" id="syncConfigDetails">
+          <summary class="sync-config-summary">⚙️ Supabase 連線設定（首次設定一次即可）</summary>
+          <form id="syncConfigForm" class="sync-config-form">
+            <div class="form-group">
+              <label class="form-label" for="sbUrlInput">Supabase Project URL</label>
+              <input type="url" id="sbUrlInput" class="form-input" placeholder="https://xxxxxxxxxxxx.supabase.co" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sbKeyInput">Supabase Publishable / Anon Key</label>
+              <input type="text" id="sbKeyInput" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIs..." required />
+            </div>
+            <p class="sync-hint-text">
+              提示：在 Supabase 建立免費專案後，於 SQL Editor 執行專案內的 <code>supabase_setup.sql</code>，再將 URL 與 Key 貼到這裡（或寫入 <code>js/sync-config.js</code>）。
+            </p>
+            <button type="submit" class="btn-secondary">儲存連線設定</button>
+          </form>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- Optional Supabase SDK for Phase 3 Cloud Realtime Sync (gracefully degrades offline) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Application Scripts (No Build Step Needed, Works on file:// & HTTP PWA) -->
+  <script src="./js/utils.js"></script>
+  <script src="./js/store.js"></script>
+  <script src="./js/sync-config.js"></script>
+  <script src="./js/sync.js"></script>
+  <script src="./js/timeline.js"></script>
+  <script src="./js/dnd.js"></script>
+  <script src="./js/ui.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>

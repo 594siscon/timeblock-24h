@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <!-- Timeline rail -->
+  <rect x="92" y="102" width="16" height="308" rx="8" fill="#FFFFFF" fill-opacity="0.35"/>
+  <!-- Time blocks -->
+  <rect x="134" y="106" width="286" height="78" rx="22" fill="#FFFFFF" fill-opacity="0.96"/>
+  <rect x="156" y="128" width="14" height="34" rx="7" fill="#3B82F6"/>
+  <rect x="188" y="135" width="148" height="20" rx="10" fill="#1E293B" fill-opacity="0.8"/>
+
+  <rect x="134" y="206" width="286" height="104" rx="22" fill="#A7F3D0" fill-opacity="0.96"/>
+  <rect x="156" y="228" width="14" height="60" rx="7" fill="#059669"/>
+  <rect x="188" y="236" width="176" height="20" rx="10" fill="#064E3B" fill-opacity="0.8"/>
+  <rect x="188" y="268" width="108" height="14" rx="7" fill="#064E3B" fill-opacity="0.45"/>
+
+  <rect x="134" y="332" width="286" height="74" rx="22" fill="#FDE68A" fill-opacity="0.96"/>
+  <rect x="156" y="352" width="14" height="34" rx="7" fill="#D97706"/>
+  <rect x="188" y="359" width="132" height="20" rx="10" fill="#78350F" fill-opacity="0.8"/>
+</svg>
