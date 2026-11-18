@@ -99,6 +99,9 @@
       this.syncConfigDetailsEl = document.getElementById('syncConfigDetails');
       this.syncConfigFormEl = document.getElementById('syncConfigForm');
       this.fbConfigInput = document.getElementById('fbConfigInput');
+      this.syncEmailFormEl = document.getElementById('syncEmailForm');
+      this.syncEmailInput = document.getElementById('syncEmailInput');
+      this.syncPasswordInput = document.getElementById('syncPasswordInput');
     }
 
     populateTimeOptions() {
@@ -352,6 +355,15 @@
         this.renderSyncStatus();
       });
 
+      this.syncEmailFormEl?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.handleEmailAuth('signin');
+      });
+
+      document.getElementById('btnSyncEmailUp')?.addEventListener('click', async () => {
+        await this.handleEmailAuth('signup');
+      });
+
       document.getElementById('btnSyncPullNow')?.addEventListener('click', async () => {
         const res = await TF.sync.pullFromCloud({ initialLogin: true });
         if (res === 'updated') this.showToast('已從雲端拉取最新排程');
@@ -382,17 +394,56 @@
       });
     }
 
+    async handleEmailAuth(mode) {
+      this.setSyncError('');
+      const email = this.syncEmailInput.value.trim();
+      const password = this.syncPasswordInput.value;
+      if (!email || password.length < 6) {
+        this.setSyncError('請輸入有效的電子郵件與至少 6 碼密碼');
+        return;
+      }
+      const btnIn = document.getElementById('btnSyncEmailIn');
+      const btnUp = document.getElementById('btnSyncEmailUp');
+      btnIn.disabled = true;
+      btnUp.disabled = true;
+      try {
+        if (mode === 'signup') {
+          await TF.sync.signUpWithEmail(email, password);
+          this.showToast('註冊並登入成功！已啟用電腦 ↔ iPhone 即時同步');
+        } else {
+          await TF.sync.signInWithEmail(email, password);
+          this.showToast('登入成功！已啟用電腦 ↔ iPhone 即時同步');
+        }
+        this.closeModal(this.syncModalEl);
+      } catch (err) {
+        this.setSyncError(this.translateAuthError(err));
+      } finally {
+        btnIn.disabled = false;
+        btnUp.disabled = false;
+        this.renderSyncStatus();
+      }
+    }
+
     translateAuthError(err) {
       const code = err?.code || '';
       const msg = err?.message || '';
-      if (code === 'auth/popup-closed-by-user') return '已取消 Google 登入視窗';
+      if (code === 'auth/popup-closed-by-user') return 'Google 登入視窗已關閉（未完成登入）';
+      if (code === 'auth/popup-blocked') {
+        return '瀏覽器阻擋了 Google 登入視窗！請到 iPhone「設定 → Safari → 關閉阻擋彈出式視窗」後再點一次，或改用下方 Email 登入。';
+      }
       if (code === 'auth/unauthorized-domain') {
-        return '此網域尚未授權！請到 Firebase Console → Authentication → Settings → Authorized domains 新增目前網域（例如 594siscon.github.io）';
+        return `此網域（${location.hostname}）尚未授權！請到 Firebase Console → Authentication → Settings → Authorized domains 新增 ${location.hostname}`;
       }
       if (code === 'auth/operation-not-allowed') {
-        return '尚未啟用 Google 登入！請到 Firebase Console → Authentication → Sign-in method 開啟 Google';
+        return '此登入方式尚未啟用！請到 Firebase Console → Authentication → Sign-in method 開啟對應登入方式。';
       }
-      return msg || '操作失敗，請稍後再試';
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+        return 'Email 或密碼不正確，請重新確認';
+      }
+      if (code === 'auth/email-already-in-use') {
+        return '此 Email 已註冊過，請直接點「Email 登入」';
+      }
+      return code ? `${code}：${msg}` : (msg || '操作失敗，請稍後再試');
     }
 
     setSyncError(msg) {

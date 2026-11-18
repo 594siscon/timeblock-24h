@@ -1,4 +1,4 @@
-const CACHE_NAME = 'timeblock-24h-v5';
+const CACHE_NAME = 'timeblock-24h-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -36,20 +36,20 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const reqUrl = new URL(event.request.url);
-  // Only cache same-origin static files; never intercept Supabase API / Realtime traffic
+  // Only cache same-origin static files; never intercept Firebase / Google Auth traffic
   if (reqUrl.origin !== self.location.origin) return;
+
+  // Network-first so iPhone & Desktop always get latest updates immediately when online,
+  // falling back to cache when offline.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const networkFetch = fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || networkFetch;
-    })
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

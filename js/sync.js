@@ -195,11 +195,16 @@
         this.auth = this.app.auth();
         this.db = this.app.firestore();
 
-        // Complete any pending redirect sign-in (used on iOS Safari PWA)
+        // Persist auth session across iPhone Safari / PWA restarts
+        try {
+          await this.auth.setPersistence(global.firebase.auth.Auth.Persistence.LOCAL);
+        } catch (_) {}
+
+        // Complete any pending redirect sign-in if one was triggered
         this.auth.getRedirectResult().catch((err) => {
           if (err && err.code) {
             console.warn('Google Redirect 登入狀態：', err);
-            this.setStatus('error', err.message || 'Google 登入失敗');
+            this.setStatus('error', `${err.code}: ${err.message || 'Google 登入失敗'}`);
           }
         });
 
@@ -248,29 +253,38 @@
       const provider = new global.firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
 
-      // Detect iOS standalone PWA where redirect is more reliable than popup
-      const isIosStandalone =
-        global.navigator.standalone === true ||
-        (global.matchMedia && global.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad|iPod/i.test(navigator.userAgent));
-
-      if (isIosStandalone) {
-        await this.auth.signInWithRedirect(provider);
-        return;
+      // Always prefer signInWithPopup first — on iOS Safari 16+, cross-domain signInWithRedirect
+      // (github.io -> firebaseapp.com) is silently dropped by Apple ITP third-party storage partitioning,
+      // whereas signInWithPopup uses window.opener messaging and succeeds cleanly!
+      const result = await this.auth.signInWithPopup(provider);
+      if (result?.user) {
+        await this.handleSignedIn(result.user);
       }
+      return result?.user || null;
+    }
 
-      try {
-        await this.auth.signInWithPopup(provider);
-      } catch (err) {
-        // Fallback to redirect if browser blocks popups
-        if (
-          err?.code === 'auth/popup-blocked' ||
-          err?.code === 'auth/operation-not-supported-in-this-environment'
-        ) {
-          await this.auth.signInWithRedirect(provider);
-          return;
-        }
-        throw err;
+    async signInWithEmail(email, password) {
+      if (!this.auth) {
+        const ok = await this.connectClient();
+        if (!ok) throw new Error('請先貼上正確的 Firebase 設定（firebaseConfig）');
       }
+      const result = await this.auth.signInWithEmailAndPassword(email, password);
+      if (result?.user) {
+        await this.handleSignedIn(result.user);
+      }
+      return result?.user || null;
+    }
+
+    async signUpWithEmail(email, password) {
+      if (!this.auth) {
+        const ok = await this.connectClient();
+        if (!ok) throw new Error('請先貼上正確的 Firebase 設定（firebaseConfig）');
+      }
+      const result = await this.auth.createUserWithEmailAndPassword(email, password);
+      if (result?.user) {
+        await this.handleSignedIn(result.user);
+      }
+      return result?.user || null;
     }
 
     async signOut() {

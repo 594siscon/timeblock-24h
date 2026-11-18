@@ -428,8 +428,15 @@ button {
   cursor: wait;
 }
 
+.sync-ios-tip {
+  margin: 10px 0 2px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
 .sync-email-fallback {
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .sync-divider {
