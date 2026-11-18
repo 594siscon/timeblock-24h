@@ -366,16 +366,98 @@ button {
   margin-bottom: 12px;
 }
 
-.sync-account-email {
+.sync-account-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sync-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--bg-surface);
+  flex-shrink: 0;
+}
+
+.sync-account-name {
   font-size: 14px;
   font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sync-account-email {
+  font-size: 13px;
+  font-weight: 600;
   color: var(--accent);
 }
 
 .sync-account-meta {
   font-size: 12px;
   color: var(--text-secondary);
-  margin-top: 3px;
+  margin-top: 6px;
+}
+
+.btn-google {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-radius: 11px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s ease;
+}
+
+.btn-google:hover {
+  border-color: var(--accent);
+  background: var(--bg-subtle);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-google:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.sync-email-fallback {
+  margin-top: 12px;
+}
+
+.sync-divider {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+
+.sync-divider::-webkit-details-marker {
+  display: none;
+}
+
+.sync-divider::before,
+.sync-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.sync-auth-form {
+  margin-top: 12px;
 }
 
 .sync-actions-grid {

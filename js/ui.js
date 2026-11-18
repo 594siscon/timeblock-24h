@@ -91,6 +91,8 @@
       this.syncBannerSubEl = document.getElementById('syncBannerSub');
       this.syncLoggedInPanelEl = document.getElementById('syncLoggedInPanel');
       this.syncAuthPanelEl = document.getElementById('syncAuthPanel');
+      this.syncUserAvatarEl = document.getElementById('syncUserAvatar');
+      this.syncUserNameEl = document.getElementById('syncUserName');
       this.syncUserEmailEl = document.getElementById('syncUserEmail');
       this.syncLastTimeEl = document.getElementById('syncLastTime');
       this.syncErrorBoxEl = document.getElementById('syncErrorBox');
@@ -312,6 +314,23 @@
       // Sync modal events
       document.getElementById('btnSyncModal')?.addEventListener('click', () => this.openSyncModal());
 
+      document.getElementById('btnSyncGoogle')?.addEventListener('click', async () => {
+        this.setSyncError('');
+        if (!TF.sync.hasConfig()) {
+          this.syncConfigDetailsEl.open = true;
+          this.setSyncError('請先於下方填入 Supabase Project URL 與 Anon Key 並儲存');
+          return;
+        }
+        const btn = document.getElementById('btnSyncGoogle');
+        btn.disabled = true;
+        try {
+          await TF.sync.signInWithGoogle();
+        } catch (err) {
+          this.setSyncError(this.translateAuthError(err?.message));
+          btn.disabled = false;
+        }
+      });
+
       this.syncConfigFormEl?.addEventListener('submit', async (e) => {
         e.preventDefault();
         this.setSyncError('');
@@ -469,6 +488,19 @@
       if (info.user) {
         this.syncLoggedInPanelEl.hidden = false;
         this.syncAuthPanelEl.hidden = true;
+        const meta = info.user.user_metadata || {};
+        if (meta.avatar_url) {
+          this.syncUserAvatarEl.src = meta.avatar_url;
+          this.syncUserAvatarEl.hidden = false;
+        } else {
+          this.syncUserAvatarEl.hidden = true;
+        }
+        if (meta.full_name || meta.name) {
+          this.syncUserNameEl.textContent = meta.full_name || meta.name;
+          this.syncUserNameEl.hidden = false;
+        } else {
+          this.syncUserNameEl.hidden = true;
+        }
         this.syncUserEmailEl.textContent = info.user.email || '已登入使用者';
         const timeStr = info.lastSyncedAt
           ? info.lastSyncedAt.toLocaleTimeString('zh-Hant', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -485,9 +517,9 @@
       } else {
         this.syncLoggedInPanelEl.hidden = true;
         this.syncAuthPanelEl.hidden = false;
-        this.syncBannerTitleEl.textContent = info.hasConfig ? '尚未登入同步帳號' : '尚未設定 Supabase 雲端連線';
+        this.syncBannerTitleEl.textContent = info.hasConfig ? '尚未登入 Google 帳號' : '尚未設定 Supabase 雲端連線';
         this.syncBannerSubEl.textContent = info.hasConfig
-          ? '輸入 Email 與密碼登入後，電腦與 iPhone 即可即時自動同步'
+          ? '點下方「使用 Google 帳號登入」即可在電腦與 iPhone 即時自動同步'
           : '展開下方「Supabase 連線設定」貼上免費專案的 URL 與 Key 即可啟用';
       }
 

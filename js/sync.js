@@ -160,6 +160,11 @@
         if (error) throw error;
 
         if (data?.session?.user) {
+          // Clean OAuth callback tokens/code from URL bar after redirect
+          if (global.location.hash.includes('access_token') || global.location.search.includes('code=')) {
+            const cleanUrl = global.location.origin + global.location.pathname;
+            global.history.replaceState({}, '', cleanUrl);
+          }
           await this.handleSignedIn(data.session.user);
         } else {
           this.user = null;
@@ -195,6 +200,24 @@
         await this.pushToCloud();
       }
       this.ensureRealtimeSubscription();
+    }
+
+    async signInWithGoogle() {
+      if (!this.supabase) {
+        const ok = await this.connectClient();
+        if (!ok) throw new Error('請先設定正確的 Supabase URL 與 Anon Key');
+      }
+      const redirectTo = global.location.origin + global.location.pathname;
+      const { error } = await this.supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: 'select_account'
+          }
+        }
+      });
+      if (error) throw error;
     }
 
     async signUp(email, password) {

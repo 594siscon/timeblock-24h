@@ -12,16 +12,27 @@
 
 ---
 
-## 啟用「電腦 ↔ iPhone 即時自動同步」（免費 Supabase，3 分鐘設定）
+## 啟用「Google 帳號電腦 ↔ iPhone 即時自動同步」（免費 Supabase）
 
+### 步驟 1：建立 Supabase 免費專案與資料表
 1. 前往 [https://supabase.com](https://supabase.com) 登入並點擊 **New Project** 建立免費專案。
-2. 進入左側 **SQL Editor**，將專案內的 [`supabase_setup.sql`](./supabase_setup.sql) 全部貼上並按 **Run**（自動建立資料表、RLS 隱私權限與 Realtime 即時推播）。
-3. （建議）前往左側 **Authentication → Providers → Email**，關閉 **Confirm email**（讓註冊後不需收信即可馬上登入同步）。
-4. 前往左側 **Project Settings → API**（或 **API Keys**），複製：
-   - **Project URL**（例如 `https://xxxx.supabase.co`）
-   - **Publishable / anon public key**
-5. 在 App 右上角點 **「雲端同步」** → 展開 **「⚙️ Supabase 連線設定」** → 貼上 URL 與 Key 並儲存 → 註冊／登入帳號即可！
-   - 若不想在 iPhone 重複貼上金鑰：登入後點 **「🔗 複製 iPhone 快速設定連結」** 傳到手機點開，或直接把 URL 與 Key 填入 [`js/sync-config.js`](./js/sync-config.js) 後推上 GitHub。
+2. 進入左側 **SQL Editor**，將專案內的 [`supabase_setup.sql`](./supabase_setup.sql) 全部貼上並按 **Run**。
+
+### 步驟 2：開啟 Google 登入（OAuth）
+1. 在 Supabase 左側點 **Authentication → Sign In / Providers → Google**，打開 **Enable Sign in with Google**，並複製畫面上顯示的 **Callback URL**（格式為 `https://<你的專案ID>.supabase.co/auth/v1/callback`）。
+2. 前往 [Google Cloud Console](https://console.cloud.google.com/apis/credentials)：
+   - 建立或選擇專案 → 點 **建立憑證 → OAuth 用戶端 ID**（若首次使用，先快速完成「OAuth 同意畫面」，選 External 即可）。
+   - 應用程式類型選 **網頁應用程式（Web application）**。
+   - **已授權的重新導向 URI** 貼上剛剛 Supabase 給的 **Callback URL**，按建立。
+   - 複製產生的 **用戶端編號（Client ID）** 與 **用戶端密鑰（Client Secret）**，貼回 Supabase 的 Google Provider 設定並 **Save**。
+3. 在 Supabase 左側點 **Authentication → URL Configuration**：
+   - **Site URL** 填入你的 GitHub Pages 網址：`https://594siscon.github.io/timeblock-24h/`
+   - **Redirect URLs** 加入 `https://594siscon.github.io/timeblock-24h/**`（若也會在電腦本機測試，可一併加上 `http://localhost:8080/**`）並 **Save**。
+
+### 步驟 3：填入 Supabase URL 與 Key
+1. 到 Supabase **Project Settings → API** 複製 **Project URL** 與 **Publishable / anon key**。
+2. 在 App 右上角點 **「雲端同步」** → 展開 **「⚙️ Supabase 連線設定」** → 貼上並儲存 → 點 **「使用 Google 帳號登入並即時同步」** 即可！
+   - 也可以把 URL 與 Key 填入 [`js/sync-config.js`](./js/sync-config.js) 推上 GitHub，電腦與 iPhone 開啟網頁就能直接一鍵 Google 登入！
 
 ---
 
