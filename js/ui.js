@@ -97,12 +97,8 @@
       this.syncLastTimeEl = document.getElementById('syncLastTime');
       this.syncErrorBoxEl = document.getElementById('syncErrorBox');
       this.syncConfigDetailsEl = document.getElementById('syncConfigDetails');
-      this.syncAuthFormEl = document.getElementById('syncAuthForm');
-      this.syncEmailInput = document.getElementById('syncEmailInput');
-      this.syncPasswordInput = document.getElementById('syncPasswordInput');
       this.syncConfigFormEl = document.getElementById('syncConfigForm');
-      this.sbUrlInput = document.getElementById('sbUrlInput');
-      this.sbKeyInput = document.getElementById('sbKeyInput');
+      this.fbConfigInput = document.getElementById('fbConfigInput');
     }
 
     populateTimeOptions() {
@@ -318,43 +314,42 @@
         this.setSyncError('');
         if (!TF.sync.hasConfig()) {
           this.syncConfigDetailsEl.open = true;
-          this.setSyncError('請先於下方填入 Supabase Project URL 與 Anon Key 並儲存');
+          this.setSyncError('請先於下方貼上 Firebase 的 firebaseConfig 並儲存');
           return;
         }
         const btn = document.getElementById('btnSyncGoogle');
         btn.disabled = true;
         try {
           await TF.sync.signInWithGoogle();
+          if (TF.sync.user) {
+            this.showToast('Google 登入成功！已啟用電腦 ↔ iPhone 即時同步');
+            this.closeModal(this.syncModalEl);
+          }
         } catch (err) {
-          this.setSyncError(this.translateAuthError(err?.message));
+          this.setSyncError(this.translateAuthError(err));
+        } finally {
           btn.disabled = false;
+          this.renderSyncStatus();
         }
       });
 
       this.syncConfigFormEl?.addEventListener('submit', async (e) => {
         e.preventDefault();
         this.setSyncError('');
-        const url = this.sbUrlInput.value.trim();
-        const key = this.sbKeyInput.value.trim();
-        if (!url || !key) return;
-        TF.sync.saveConfig(url, key);
+        const parsed = TF.parseFirebaseConfigInput(this.fbConfigInput.value);
+        if (!parsed) {
+          this.setSyncError('無法解析 firebaseConfig，請確認有包含 apiKey 與 projectId');
+          return;
+        }
+        TF.sync.saveConfig(parsed);
         const ok = await TF.sync.connectClient();
         if (ok) {
           this.syncConfigDetailsEl.open = false;
-          this.showToast('已儲存 Supabase 連線設定');
+          this.showToast('已儲存 Firebase 設定，現在可點擊 Google 帳號登入！');
         } else {
-          this.setSyncError(TF.sync.lastError || '無法連線，請確認 URL 與 Key 是否正確');
+          this.setSyncError(TF.sync.lastError || '無法連線，請確認 firebaseConfig 是否正確');
         }
         this.renderSyncStatus();
-      });
-
-      this.syncAuthFormEl?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await this.handleSyncAuth('signin');
-      });
-
-      document.getElementById('btnSyncSignUp')?.addEventListener('click', async () => {
-        await this.handleSyncAuth('signup');
       });
 
       document.getElementById('btnSyncPullNow')?.addEventListener('click', async () => {
@@ -375,7 +370,7 @@
         if (!link) return;
         try {
           await navigator.clipboard.writeText(link);
-          this.showToast('已複製快速設定連結！傳到 iPhone 開啟即可自動帶入設定');
+          this.showToast('已複製快速設定連結！傳到 iPhone 開啟即可自動帶入 Firebase 設定');
         } catch (_) {
           prompt('請複製以下連結並在 iPhone Safari 開啟：', link);
         }
@@ -383,56 +378,20 @@
 
       document.getElementById('btnSyncSignOut')?.addEventListener('click', async () => {
         await TF.sync.signOut();
-        this.showToast('已登出雲端同步帳號');
+        this.showToast('已登出 Google 同步帳號');
       });
     }
 
-    async handleSyncAuth(mode) {
-      this.setSyncError('');
-      if (!TF.sync.hasConfig()) {
-        this.syncConfigDetailsEl.open = true;
-        this.setSyncError('請先於下方填入 Supabase URL 與 Anon Key 並儲存');
-        return;
+    translateAuthError(err) {
+      const code = err?.code || '';
+      const msg = err?.message || '';
+      if (code === 'auth/popup-closed-by-user') return '已取消 Google 登入視窗';
+      if (code === 'auth/unauthorized-domain') {
+        return '此網域尚未授權！請到 Firebase Console → Authentication → Settings → Authorized domains 新增目前網域（例如 594siscon.github.io）';
       }
-      const email = this.syncEmailInput.value.trim();
-      const password = this.syncPasswordInput.value;
-      if (!email || password.length < 6) {
-        this.setSyncError('請輸入有效的電子郵件與至少 6 碼密碼');
-        return;
+      if (code === 'auth/operation-not-allowed') {
+        return '尚未啟用 Google 登入！請到 Firebase Console → Authentication → Sign-in method 開啟 Google';
       }
-
-      const btnIn = document.getElementById('btnSyncSignIn');
-      const btnUp = document.getElementById('btnSyncSignUp');
-      btnIn.disabled = true;
-      btnUp.disabled = true;
-
-      try {
-        if (mode === 'signup') {
-          const res = await TF.sync.signUp(email, password);
-          if (res.needsConfirm) {
-            this.showToast('註冊成功！請到信箱點擊驗證連結後再登入');
-          } else {
-            this.showToast('註冊並登入成功！已啟用即時自動同步');
-            this.closeModal(this.syncModalEl);
-          }
-        } else {
-          await TF.sync.signIn(email, password);
-          this.showToast('登入成功！電腦與 iPhone 已啟用即時同步');
-          this.closeModal(this.syncModalEl);
-        }
-      } catch (err) {
-        this.setSyncError(this.translateAuthError(err?.message));
-      } finally {
-        btnIn.disabled = false;
-        btnUp.disabled = false;
-        this.renderSyncStatus();
-      }
-    }
-
-    translateAuthError(msg = '') {
-      if (msg.includes('Invalid login credentials')) return '帳號或密碼錯誤，請重新確認';
-      if (msg.includes('Email not confirmed')) return '此帳號尚未完成信箱驗證（或可在 Supabase 關閉 Confirm Email）';
-      if (msg.includes('User already registered')) return '此信箱已註冊，請直接點「登入並啟用同步」';
       return msg || '操作失敗，請稍後再試';
     }
 
@@ -448,8 +407,7 @@
 
     openSyncModal() {
       this.setSyncError('');
-      this.sbUrlInput.value = TF.sync.config.url || '';
-      this.sbKeyInput.value = TF.sync.config.anonKey || '';
+      this.fbConfigInput.value = TF.sync.hasConfig() ? JSON.stringify(TF.sync.config, null, 2) : '';
       this.syncConfigDetailsEl.open = !TF.sync.hasConfig();
       this.renderSyncStatus();
       this.openModal(this.syncModalEl);
@@ -488,15 +446,14 @@
       if (info.user) {
         this.syncLoggedInPanelEl.hidden = false;
         this.syncAuthPanelEl.hidden = true;
-        const meta = info.user.user_metadata || {};
-        if (meta.avatar_url) {
-          this.syncUserAvatarEl.src = meta.avatar_url;
+        if (info.user.photoURL) {
+          this.syncUserAvatarEl.src = info.user.photoURL;
           this.syncUserAvatarEl.hidden = false;
         } else {
           this.syncUserAvatarEl.hidden = true;
         }
-        if (meta.full_name || meta.name) {
-          this.syncUserNameEl.textContent = meta.full_name || meta.name;
+        if (info.user.displayName) {
+          this.syncUserNameEl.textContent = info.user.displayName;
           this.syncUserNameEl.hidden = false;
         } else {
           this.syncUserNameEl.hidden = true;
@@ -509,7 +466,7 @@
           info.status === 'syncing'
             ? '正在即時同步...'
             : `最後同步時間：${timeStr}（電腦與 iPhone 自動雙向同步）`;
-        this.syncBannerTitleEl.textContent = info.status === 'offline' ? '目前處於離線狀態' : '☁️ 雲端即時同步運行中';
+        this.syncBannerTitleEl.textContent = info.status === 'offline' ? '目前處於離線狀態' : '☁️ Firebase 即時同步運行中';
         this.syncBannerSubEl.textContent =
           info.status === 'offline'
             ? '離線修改會暫存在本機，恢復網路後自動同步'
@@ -517,10 +474,10 @@
       } else {
         this.syncLoggedInPanelEl.hidden = true;
         this.syncAuthPanelEl.hidden = false;
-        this.syncBannerTitleEl.textContent = info.hasConfig ? '尚未登入 Google 帳號' : '尚未設定 Supabase 雲端連線';
+        this.syncBannerTitleEl.textContent = info.hasConfig ? '尚未登入 Google 帳號' : '尚未設定 Firebase 連線';
         this.syncBannerSubEl.textContent = info.hasConfig
           ? '點下方「使用 Google 帳號登入」即可在電腦與 iPhone 即時自動同步'
-          : '展開下方「Supabase 連線設定」貼上免費專案的 URL 與 Key 即可啟用';
+          : '展開下方「Firebase 連線設定」貼上免費專案的 firebaseConfig 即可啟用';
       }
 
       if (info.status === 'error' && info.lastError) {

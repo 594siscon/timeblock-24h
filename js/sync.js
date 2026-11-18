@@ -3,9 +3,9 @@
 
   const TF = (global.TimeFlow = global.TimeFlow || {});
 
-  const SYNC_CONFIG_KEY = 'timeblock_24h_supabase_cfg_v1';
+  const SYNC_CONFIG_KEY = 'timeblock_24h_firebase_cfg_v1';
   const CLIENT_ID_KEY = 'timeblock_24h_client_id_v1';
-  const TABLE_NAME = 'user_schedules';
+  const COLLECTION_NAME = 'schedules';
 
   function getOrCreateClientId() {
     let cid = global.localStorage.getItem(CLIENT_ID_KEY);
@@ -16,12 +16,55 @@
     return cid;
   }
 
+  /**
+   * Smartly parses either valid JSON or the JS object snippet copied directly from Firebase Console
+   * (e.g. `const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "..." };`)
+   */
+  function parseFirebaseConfigInput(rawText) {
+    const text = (rawText || '').trim();
+    if (!text) return null;
+
+    // Try direct JSON first
+    try {
+      const obj = JSON.parse(text);
+      if (obj && obj.apiKey && obj.projectId) return normalizeConfig(obj);
+    } catch (_) {}
+
+    // Extract key: "value" or key: 'value' pairs from JS snippet
+    const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+    const extracted = {};
+    for (const key of keys) {
+      const re = new RegExp(`["']?${key}["']?\\s*:\\s*["']([^"']+)["']`);
+      const match = text.match(re);
+      if (match) extracted[key] = match[1].trim();
+    }
+    if (extracted.apiKey && extracted.projectId) {
+      return normalizeConfig(extracted);
+    }
+    return null;
+  }
+
+  function normalizeConfig(obj) {
+    const projectId = (obj.projectId || '').trim();
+    return {
+      apiKey: (obj.apiKey || '').trim(),
+      authDomain: (obj.authDomain || (projectId ? `${projectId}.firebaseapp.com` : '')).trim(),
+      projectId,
+      storageBucket: (obj.storageBucket || '').trim(),
+      messagingSenderId: (obj.messagingSenderId || '').trim(),
+      appId: (obj.appId || '').trim()
+    };
+  }
+
   class CloudSyncManager {
     constructor() {
       this.clientId = getOrCreateClientId();
-      this.supabase = null;
+      this.app = null;
+      this.auth = null;
+      this.db = null;
       this.user = null;
-      this.channel = null;
+      this.unsubSnapshot = null;
+      this.unsubAuth = null;
       this.pushTimer = null;
       this.isApplyingRemote = false;
       this.status = 'disconnected'; // disconnected | connecting | synced | syncing | offline | error
@@ -33,18 +76,19 @@
     }
 
     loadConfig() {
-      // 1. Check URL params (?sb_url=...&sb_key=...) for quick device pairing
+      // 1. Check URL param (?fb_cfg=base64) for 1-click iPhone setup
       try {
         const params = new URLSearchParams(global.location.search);
-        const paramUrl = params.get('sb_url');
-        const paramKey = params.get('sb_key');
-        if (paramUrl && paramKey) {
-          const cfg = { url: paramUrl.trim(), anonKey: paramKey.trim() };
-          global.localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(cfg));
-          // Clean URL bar so key isn't left in browser history
-          const cleanUrl = global.location.origin + global.location.pathname;
-          global.history.replaceState({}, '', cleanUrl);
-          return cfg;
+        const encoded = params.get('fb_cfg');
+        if (encoded) {
+          const decoded = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+          if (decoded?.apiKey && decoded?.projectId) {
+            const norm = normalizeConfig(decoded);
+            global.localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(norm));
+            const cleanUrl = global.location.origin + global.location.pathname;
+            global.history.replaceState({}, '', cleanUrl);
+            return norm;
+          }
         }
       } catch (_) {}
 
@@ -53,28 +97,22 @@
         const raw = global.localStorage.getItem(SYNC_CONFIG_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (parsed?.url && parsed?.anonKey) return parsed;
+          if (parsed?.apiKey && parsed?.projectId) return normalizeConfig(parsed);
         }
       } catch (_) {}
 
       // 3. Fallback to js/sync-config.js prefilled config
-      const pre = global.TIMEFLOW_SUPABASE_CONFIG || {};
-      return {
-        url: (pre.url || '').trim(),
-        anonKey: (pre.anonKey || '').trim()
-      };
+      const pre = global.TIMEFLOW_FIREBASE_CONFIG || {};
+      return normalizeConfig(pre);
     }
 
-    saveConfig(url, anonKey) {
-      this.config = {
-        url: (url || '').trim().replace(/\/+$/, ''),
-        anonKey: (anonKey || '').trim()
-      };
+    saveConfig(cfgObj) {
+      this.config = normalizeConfig(cfgObj);
       global.localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(this.config));
     }
 
     hasConfig() {
-      return Boolean(this.config.url && this.config.anonKey);
+      return Boolean(this.config.apiKey && this.config.projectId && this.config.authDomain);
     }
 
     subscribe(fn) {
@@ -95,32 +133,30 @@
         lastSyncedAt: this.lastSyncedAt,
         lastError: this.lastError,
         hasConfig: this.hasConfig(),
-        sdkLoaded: Boolean(global.supabase && global.supabase.createClient)
+        sdkLoaded: Boolean(global.firebase && global.firebase.initializeApp)
       };
     }
 
     async init() {
-      // Listen to local store edits -> schedule debounced push
+      // Listen to local store mutations -> schedule debounced push to Firestore
       TF.store.subscribe((reason) => {
         if (this.isApplyingRemote) return;
         if (['date', 'filter', 'selection', 'zoom', 'remote-sync'].includes(reason)) return;
-        if (this.user && this.supabase) {
+        if (this.user && this.db) {
           this.schedulePush();
         }
       });
 
-      // Re-sync when iPhone PWA wakes up from background or network reconnects
+      // Re-sync cleanly when iPhone PWA returns from background or reconnects
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && this.user && this.supabase) {
+        if (document.visibilityState === 'visible' && this.user && this.db) {
           this.pullFromCloud({ silent: true });
-          this.ensureRealtimeSubscription();
         }
       });
 
       global.addEventListener('online', () => {
-        if (this.user && this.supabase) {
+        if (this.user && this.db) {
           this.pullFromCloud({ silent: true });
-          this.ensureRealtimeSubscription();
         }
       });
 
@@ -140,44 +176,40 @@
         this.setStatus('disconnected');
         return false;
       }
-      if (!global.supabase || !global.supabase.createClient) {
-        this.setStatus('offline', '尚未載入 Supabase SDK（可能處於離線狀態）');
+      if (!global.firebase || !global.firebase.initializeApp) {
+        this.setStatus('offline', '尚未載入 Firebase SDK（可能處於離線狀態）');
         return false;
       }
 
       this.setStatus('connecting');
       try {
-        this.cleanupRealtime();
-        this.supabase = global.supabase.createClient(this.config.url, this.config.anonKey, {
-          auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true
+        this.cleanupListeners();
+
+        // Reuse or recreate named Firebase app so re-saving config works cleanly without reload
+        const existing = global.firebase.apps.find((a) => a.name === 'timeflow');
+        if (existing) {
+          await existing.delete();
+        }
+
+        this.app = global.firebase.initializeApp(this.config, 'timeflow');
+        this.auth = this.app.auth();
+        this.db = this.app.firestore();
+
+        // Complete any pending redirect sign-in (used on iOS Safari PWA)
+        this.auth.getRedirectResult().catch((err) => {
+          if (err && err.code) {
+            console.warn('Google Redirect 登入狀態：', err);
+            this.setStatus('error', err.message || 'Google 登入失敗');
           }
         });
 
-        const { data, error } = await this.supabase.auth.getSession();
-        if (error) throw error;
-
-        if (data?.session?.user) {
-          // Clean OAuth callback tokens/code from URL bar after redirect
-          if (global.location.hash.includes('access_token') || global.location.search.includes('code=')) {
-            const cleanUrl = global.location.origin + global.location.pathname;
-            global.history.replaceState({}, '', cleanUrl);
-          }
-          await this.handleSignedIn(data.session.user);
-        } else {
-          this.user = null;
-          this.setStatus('disconnected');
-        }
-
-        this.supabase.auth.onAuthStateChange(async (event, session) => {
-          if (event === 'SIGNED_IN' && session?.user) {
-            if (!this.user || this.user.id !== session.user.id) {
-              await this.handleSignedIn(session.user);
+        this.unsubAuth = this.auth.onAuthStateChanged(async (user) => {
+          if (user) {
+            if (!this.user || this.user.uid !== user.uid) {
+              await this.handleSignedIn(user);
             }
-          } else if (event === 'SIGNED_OUT') {
-            this.cleanupRealtime();
+          } else {
+            this.cleanupSnapshot();
             this.user = null;
             this.setStatus('disconnected');
           }
@@ -185,74 +217,74 @@
 
         return true;
       } catch (err) {
-        console.error('Supabase 連線失敗:', err);
-        this.setStatus('error', err.message || '連線設定有誤');
+        console.error('Firebase 初始化失敗：', err);
+        this.setStatus('error', err.message || 'Firebase 設定有誤');
         return false;
       }
     }
 
     async handleSignedIn(user) {
-      this.user = user;
+      this.user = {
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || '',
+        photoURL: user.photoURL || ''
+      };
       this.setStatus('syncing');
+
       const pulled = await this.pullFromCloud({ initialLogin: true });
       if (pulled === 'empty') {
-        // Brand new cloud account -> upload current local schedule to cloud
         await this.pushToCloud();
       }
-      this.ensureRealtimeSubscription();
+      this.startRealtimeListener();
     }
 
     async signInWithGoogle() {
-      if (!this.supabase) {
+      if (!this.auth) {
         const ok = await this.connectClient();
-        if (!ok) throw new Error('請先設定正確的 Supabase URL 與 Anon Key');
+        if (!ok) throw new Error('請先貼上正確的 Firebase 設定（firebaseConfig）');
       }
-      const redirectTo = global.location.origin + global.location.pathname;
-      const { error } = await this.supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          queryParams: {
-            prompt: 'select_account'
-          }
+
+      const provider = new global.firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+
+      // Detect iOS standalone PWA where redirect is more reliable than popup
+      const isIosStandalone =
+        global.navigator.standalone === true ||
+        (global.matchMedia && global.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad|iPod/i.test(navigator.userAgent));
+
+      if (isIosStandalone) {
+        await this.auth.signInWithRedirect(provider);
+        return;
+      }
+
+      try {
+        await this.auth.signInWithPopup(provider);
+      } catch (err) {
+        // Fallback to redirect if browser blocks popups
+        if (
+          err?.code === 'auth/popup-blocked' ||
+          err?.code === 'auth/operation-not-supported-in-this-environment'
+        ) {
+          await this.auth.signInWithRedirect(provider);
+          return;
         }
-      });
-      if (error) throw error;
-    }
-
-    async signUp(email, password) {
-      if (!this.supabase) {
-        const ok = await this.connectClient();
-        if (!ok) throw new Error('請先設定正確的 Supabase URL 與 Anon Key');
-      }
-      const { data, error } = await this.supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      if (data?.session?.user) {
-        await this.handleSignedIn(data.session.user);
-        return { needsConfirm: false };
-      }
-      return { needsConfirm: true };
-    }
-
-    async signIn(email, password) {
-      if (!this.supabase) {
-        const ok = await this.connectClient();
-        if (!ok) throw new Error('請先設定正確的 Supabase URL 與 Anon Key');
-      }
-      const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      if (data?.user) {
-        await this.handleSignedIn(data.user);
+        throw err;
       }
     }
 
     async signOut() {
-      this.cleanupRealtime();
-      if (this.supabase) {
-        await this.supabase.auth.signOut();
+      this.cleanupSnapshot();
+      if (this.auth) {
+        await this.auth.signOut();
       }
       this.user = null;
       this.setStatus('disconnected');
+    }
+
+    getDocRef() {
+      if (!this.db || !this.user) return null;
+      return this.db.collection(COLLECTION_NAME).doc(this.user.uid);
     }
 
     schedulePush() {
@@ -273,7 +305,8 @@
     }
 
     async pushToCloud() {
-      if (!this.supabase || !this.user) return false;
+      const ref = this.getDocRef();
+      if (!ref) return false;
       if (!navigator.onLine) {
         this.setStatus('offline', '目前離線，恢復連線後將自動同步');
         return false;
@@ -281,30 +314,25 @@
 
       this.setStatus('syncing');
       try {
-        const payload = this.buildSyncPayload();
-        const nowIso = new Date().toISOString();
-        const { error } = await this.supabase
-          .from(TABLE_NAME)
-          .upsert({
-            user_id: this.user.id,
-            payload,
-            client_id: this.clientId,
-            updated_at: nowIso
-          }, { onConflict: 'user_id' });
-
-        if (error) throw error;
+        await ref.set({
+          payload: this.buildSyncPayload(),
+          clientId: this.clientId,
+          updatedAt: global.firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAtMs: Date.now()
+        });
         this.lastSyncedAt = new Date();
         this.setStatus('synced');
         return true;
       } catch (err) {
-        console.error('雲端上傳失敗:', err);
-        this.setStatus('error', err.message || '同步上傳失敗');
+        console.error('Firestore 上傳失敗：', err);
+        this.setStatus('error', err.message || '同步上傳失敗，請確認 Firestore 規則');
         return false;
       }
     }
 
     async pullFromCloud({ initialLogin = false, silent = false } = {}) {
-      if (!this.supabase || !this.user) return 'no-auth';
+      const ref = this.getDocRef();
+      if (!ref) return 'no-auth';
       if (!navigator.onLine) {
         this.setStatus('offline');
         return 'offline';
@@ -312,22 +340,21 @@
 
       if (!silent) this.setStatus('syncing');
       try {
-        const { data, error } = await this.supabase
-          .from(TABLE_NAME)
-          .select('payload, client_id, updated_at')
-          .eq('user_id', this.user.id)
-          .maybeSingle();
-
-        if (error) throw error;
-
-        if (!data || !data.payload || !Array.isArray(data.payload.categories)) {
+        const snap = await ref.get();
+        if (!snap.exists) {
           this.lastSyncedAt = new Date();
           this.setStatus('synced');
           return 'empty';
         }
 
-        // Skip applying if it's our own latest write unless initial login
-        if (!initialLogin && data.client_id === this.clientId) {
+        const data = snap.data();
+        if (!data?.payload || !Array.isArray(data.payload.categories)) {
+          this.lastSyncedAt = new Date();
+          this.setStatus('synced');
+          return 'empty';
+        }
+
+        if (!initialLogin && data.clientId === this.clientId) {
           this.lastSyncedAt = new Date();
           this.setStatus('synced');
           return 'same';
@@ -338,10 +365,40 @@
         this.setStatus('synced');
         return 'updated';
       } catch (err) {
-        console.error('雲端讀取失敗:', err);
+        console.error('Firestore 讀取失敗：', err);
         this.setStatus('error', err.message || '讀取雲端資料失敗');
         return 'error';
       }
+    }
+
+    startRealtimeListener() {
+      this.cleanupSnapshot();
+      const ref = this.getDocRef();
+      if (!ref) return;
+
+      let firstEvent = true;
+      this.unsubSnapshot = ref.onSnapshot(
+        (snap) => {
+          if (firstEvent) {
+            firstEvent = false;
+            return;
+          }
+          if (!snap.exists) return;
+          if (snap.metadata.hasPendingWrites) return;
+
+          const data = snap.data();
+          if (!data?.payload || data.clientId === this.clientId) return;
+
+          this.applyRemotePayload(data.payload);
+          this.lastSyncedAt = new Date();
+          this.setStatus('synced');
+          TF.ui?.showToast('☁️ 已即時同步來自其他裝置的更新');
+        },
+        (err) => {
+          console.error('Firestore 即時監聽錯誤：', err);
+          this.setStatus('error', err.message || '即時同步連線中斷');
+        }
+      );
     }
 
     applyRemotePayload(payload) {
@@ -363,61 +420,29 @@
       }
     }
 
-    ensureRealtimeSubscription() {
-      if (!this.supabase || !this.user) return;
-      if (this.channel) {
-        const state = this.channel.state;
-        if (state === 'joined' || state === 'joining') return;
-        this.cleanupRealtime();
+    cleanupSnapshot() {
+      if (this.unsubSnapshot) {
+        try { this.unsubSnapshot(); } catch (_) {}
+        this.unsubSnapshot = null;
       }
-
-      this.channel = this.supabase
-        .channel(`schedule_${this.user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: TABLE_NAME,
-            filter: `user_id=eq.${this.user.id}`
-          },
-          (change) => {
-            const row = change.new;
-            if (!row || !row.payload) return;
-            // Ignore echo from our own device
-            if (row.client_id === this.clientId) return;
-            this.applyRemotePayload(row.payload);
-            this.lastSyncedAt = new Date();
-            this.setStatus('synced');
-            TF.ui?.showToast('☁️ 已即時同步來自其他裝置的更新');
-          }
-        )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            this.setStatus('synced');
-          }
-        });
     }
 
-    cleanupRealtime() {
-      if (this.channel && this.supabase) {
-        try {
-          this.supabase.removeChannel(this.channel);
-        } catch (_) {}
+    cleanupListeners() {
+      this.cleanupSnapshot();
+      if (this.unsubAuth) {
+        try { this.unsubAuth(); } catch (_) {}
+        this.unsubAuth = null;
       }
-      this.channel = null;
     }
 
     getQuickShareLink() {
       if (!this.hasConfig()) return '';
       const base = global.location.origin + global.location.pathname;
-      const params = new URLSearchParams({
-        sb_url: this.config.url,
-        sb_key: this.config.anonKey
-      });
-      return `${base}?${params.toString()}`;
+      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(this.config))));
+      return `${base}?fb_cfg=${encodeURIComponent(encoded)}`;
     }
   }
 
+  TF.parseFirebaseConfigInput = parseFirebaseConfigInput;
   TF.sync = new CloudSyncManager();
 })(window);

@@ -328,19 +328,19 @@
     </div>
   </div>
 
-  <!-- Modal 5: Cloud Sync (Supabase Realtime) -->
+  <!-- Modal 5: Cloud Sync (Firebase Google Auth + Firestore Realtime) -->
   <div class="modal-backdrop" id="syncModal" hidden>
     <div class="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
       <div class="modal-header">
-        <h3 class="modal-title" id="syncModalTitle">☁️ 電腦 ↔ iPhone 即時自動同步</h3>
+        <h3 class="modal-title" id="syncModalTitle">☁️ Google 帳號即時自動同步</h3>
         <button type="button" class="icon-btn-sm" data-close-modal="syncModal" aria-label="關閉">✕</button>
       </div>
       <div class="modal-body">
         <div class="sync-banner" id="syncBanner">
           <span class="sync-dot" id="syncModalDot"></span>
           <div class="sync-banner-text">
-            <div class="sync-banner-title" id="syncBannerTitle">尚未登入雲端帳號</div>
-            <div class="sync-banner-sub" id="syncBannerSub">登入後，電腦與 iPhone 的所有修改都會即時自動同步</div>
+            <div class="sync-banner-title" id="syncBannerTitle">尚未登入 Google 帳號</div>
+            <div class="sync-banner-sub" id="syncBannerSub">使用 Google 登入後，電腦與 iPhone 的所有修改都會即時自動同步</div>
           </div>
         </div>
 
@@ -364,7 +364,7 @@
           </div>
         </div>
 
-        <!-- Auth Form (when not signed in) -->
+        <!-- Auth Panel (Google One-Click Sign-In) -->
         <div id="syncAuthPanel">
           <button type="button" class="btn-google" id="btnSyncGoogle">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -375,54 +375,39 @@
             </svg>
             <span>使用 Google 帳號登入並即時同步</span>
           </button>
-
-          <details class="sync-email-fallback">
-            <summary class="sync-divider"><span>或使用 Email 密碼登入</span></summary>
-            <form id="syncAuthForm" class="sync-auth-form">
-              <div class="form-group">
-                <label class="form-label" for="syncEmailInput">電子郵件（Email）</label>
-                <input type="email" id="syncEmailInput" class="form-input" placeholder="you@example.com" autocomplete="email" required />
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="syncPasswordInput">密碼（至少 6 碼）</label>
-                <input type="password" id="syncPasswordInput" class="form-input" placeholder="請輸入密碼" minlength="6" autocomplete="current-password" required />
-              </div>
-              <div class="sync-auth-btns">
-                <button type="submit" class="btn-primary flex-1" id="btnSyncSignIn">Email 登入</button>
-                <button type="button" class="btn-secondary" id="btnSyncSignUp">註冊新帳號</button>
-              </div>
-            </form>
-          </details>
         </div>
 
         <div class="sync-error-box" id="syncErrorBox" hidden></div>
 
         <hr class="modal-divider" />
 
-        <!-- Supabase Connection Settings -->
+        <!-- Firebase Connection Settings -->
         <details class="sync-config-details" id="syncConfigDetails">
-          <summary class="sync-config-summary">⚙️ Supabase 連線設定（首次設定一次即可）</summary>
+          <summary class="sync-config-summary">⚙️ Firebase 連線設定（首次設定一次即可）</summary>
           <form id="syncConfigForm" class="sync-config-form">
             <div class="form-group">
-              <label class="form-label" for="sbUrlInput">Supabase Project URL</label>
-              <input type="url" id="sbUrlInput" class="form-input" placeholder="https://xxxxxxxxxxxx.supabase.co" required />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="sbKeyInput">Supabase Publishable / Anon Key</label>
-              <input type="text" id="sbKeyInput" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIs..." required />
+              <label class="form-label" for="fbConfigInput">直接貼上 Firebase 的 firebaseConfig 程式碼（或 JSON）</label>
+              <textarea id="fbConfigInput" class="form-textarea" rows="6" placeholder='const firebaseConfig = {
+  apiKey: "AIza...",
+  authDomain: "xxx.firebaseapp.com",
+  projectId: "xxx",
+  ...
+};' required></textarea>
             </div>
             <p class="sync-hint-text">
-              提示：在 Supabase 建立免費專案後，於 SQL Editor 執行專案內的 <code>supabase_setup.sql</code>，再將 URL 與 Key 貼到這裡（或寫入 <code>js/sync-config.js</code>）。
+              提示：在 Firebase Console 開啟「Google 登入」與「Firestore Database」（貼上 <code>firestore.rules</code>），再將 <code>firebaseConfig</code> 貼到上方（或寫入 <code>js/sync-config.js</code>）即可！
             </p>
-            <button type="submit" class="btn-secondary">儲存連線設定</button>
+            <button type="submit" class="btn-secondary">儲存 Firebase 設定</button>
           </form>
         </details>
       </div>
     </div>
   </div>
 
-  <!-- Optional Supabase SDK for Phase 3 Cloud Realtime Sync (gracefully degrades offline) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Firebase Compat SDKs (Google Auth + Firestore Realtime, gracefully degrades offline) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <!-- Application Scripts (No Build Step Needed, Works on file:// & HTTP PWA) -->
   <script src="./js/utils.js"></script>

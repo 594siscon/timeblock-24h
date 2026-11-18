@@ -118,9 +118,9 @@ interface TimeBlock {
 - [x] 設定 PWA（`manifest.json`、PNG/SVG `apple-touch-icon`、Service Worker 離線快取）與本機 Wi-Fi 伺服器（`server.py`、`啟動App.bat`）。
 
 ### Phase 3：跨裝置雲端同步（電腦 ↔ iOS）（✅ 已完成）
-- [x] 整合雲端後端（Supabase Auth + PostgreSQL JSONB + Realtime，附 [`supabase_setup.sql`](file:///c:/Users/user/Desktop/文件/時間管理app/supabase_setup.sql)）。
-- [x] 實作帳號註冊／登入／登出、標題列即時同步狀態指示、雙向即時推播與 iPhone 背景喚醒自動重拉。
-- [x] 實作離線偵測與防迴圈寫入去重（`client_id`），並提供 iPhone 快速設定連結與 `js/sync-config.js` 預設設定檔。
+- [x] 整合 **Firebase**（Google 帳號一鍵登入 + Firestore `onSnapshot` 即時同步，附 [`firestore.rules`](file:///c:/Users/user/Desktop/文件/時間管理app/firestore.rules)）。
+- [x] 實作 Google 登入（電腦彈窗＋iOS PWA 自動改用 Redirect）、標題列即時同步狀態指示、雙向即時推播與背景喚醒自動重拉。
+- [x] 實作離線偵測與防迴圈寫入去重（`clientId`），支援直接貼上 `firebaseConfig` 程式碼與 iPhone 快速設定連結。
 
 ### Phase 4：進階功能擴充（部分已完成）
 - [x] 每日各活動類別時間統計條與佔比明細。
