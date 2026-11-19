@@ -460,14 +460,14 @@
       this.state.dayTemplates = this.getDayTemplates().filter((t) => t.id !== id);
       this.notify('dayTemplates');
       return true;
-    },
+    }
 
     updateDayTemplate(id, { name, icon, description, updateBlocksFromCurrentDate = false } = {}) {
       const list = this.getDayTemplates();
       const idx = list.findIndex((t) => t.id === id);
       if (idx === -1) return null;
 
-      this.pushUndo(編輯一日模板「」);
+      this.pushUndo(`編輯一日模板「${list[idx].name}」`);
       const target = { ...list[idx] };
 
       if (name !== undefined && name.trim()) {
@@ -494,7 +494,7 @@
             .sort((a, b) => a.startMinutes - b.startMinutes);
           target.blocks = cleanBlocks;
           if (!description) {
-            target.description = 包含  項活動安排;
+            target.description = `包含 ${cleanBlocks.length} 項活動安排`;
           }
         }
       }
