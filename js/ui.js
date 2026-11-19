@@ -10,6 +10,10 @@
     formatDuration,
     formatHoursDecimal,
     formatDateDisplay,
+    getWeekDates,
+    formatWeekRangeDisplay,
+    getMonthDates,
+    formatMonthRangeDisplay,
     escapeHtml,
     hexToRgba
   } = TF.utils;
@@ -501,9 +505,22 @@
         if (!container) return;
 
         container.addEventListener('click', (e) => {
+          const scopeBtn = e.target.closest('[data-stats-scope]');
+          if (scopeBtn) {
+            TF.store.setStatsScope(scopeBtn.dataset.statsScope);
+            return;
+          }
+
           const tabBtn = e.target.closest('[data-stats-mode]');
           if (tabBtn) {
             TF.store.setStatsMode(tabBtn.dataset.statsMode);
+            return;
+          }
+
+          const dayJumpBtn = e.target.closest('[data-jump-date]');
+          if (dayJumpBtn) {
+            TF.store.setDate(dayJumpBtn.dataset.jumpDate);
+            TF.timeline.scrollToSmartPosition();
             return;
           }
 
@@ -779,98 +796,110 @@
     }
 
     renderStats() {
-      const blocks = TF.store.getBlocks();
+      const selectedDate = TF.store.state.selectedDate;
       const categories = TF.store.getCategories();
       const settings = TF.store.state.settings;
-      const statsMode = settings.statsMode || 'daily';
+      const statsScope = settings.statsScope || 'day'; // 'day' | 'week' | 'month'
+      const statsMode = settings.statsMode || 'daily'; // 'daily' | 'discretionary'
 
       const discStart = settings.discretionaryStart ?? 1140; // 19:00
       const discEnd = settings.discretionaryEnd ?? 1380; // 23:00
-      const discDuration = Math.max(SNAP_MINUTES, discEnd - discStart);
+      const discDurationPerDay = Math.max(SNAP_MINUTES, discEnd - discStart);
 
-      const totalsByCat24h = new Map();
-      const totalsByCatDisc = new Map();
-      let totalMins24h = 0;
-      let totalMinsDisc = 0;
+      // Determine target dates and header
+      let targetDates = [];
+      let rangeTitle = '';
+      let scopeBadge = '';
 
-      for (const b of blocks) {
-        totalMins24h += b.durationMinutes;
-        totalsByCat24h.set(b.categoryId, (totalsByCat24h.get(b.categoryId) || 0) + b.durationMinutes);
-
-        // Discretionary intersection
-        const bStart = b.startMinutes;
-        const bEnd = b.startMinutes + b.durationMinutes;
-        const overlap = Math.max(0, Math.min(bEnd, discEnd) - Math.max(bStart, discStart));
-        if (overlap > 0) {
-          totalMinsDisc += overlap;
-          totalsByCatDisc.set(b.categoryId, (totalsByCatDisc.get(b.categoryId) || 0) + overlap);
-        }
+      if (statsScope === 'week') {
+        targetDates = getWeekDates ? getWeekDates(selectedDate) : TF.utils.getWeekDates(selectedDate);
+        rangeTitle = formatWeekRangeDisplay ? formatWeekRangeDisplay(selectedDate) : TF.utils.formatWeekRangeDisplay(selectedDate);
+        scopeBadge = '本週（7 天）';
+      } else if (statsScope === 'month') {
+        targetDates = getMonthDates ? getMonthDates(selectedDate) : TF.utils.getMonthDates(selectedDate);
+        rangeTitle = formatMonthRangeDisplay ? formatMonthRangeDisplay(selectedDate) : TF.utils.formatMonthRangeDisplay(selectedDate);
+        scopeBadge = `本月（${targetDates.length} 天）`;
+      } else {
+        targetDates = [selectedDate];
+        rangeTitle = formatDateDisplay(selectedDate);
+        scopeBadge = '今日';
       }
 
-      const tabsHtml = `
-        <div class="stats-mode-tabs" role="tablist">
+      const numDays = targetDates.length;
+      const totalWindowMins = statsMode === 'daily'
+        ? numDays * MINUTES_PER_DAY
+        : numDays * discDurationPerDay;
+
+      // Aggregations
+      const totalsByCat = new Map();
+      let totalScheduledMins = 0;
+      const dailySummaries = [];
+
+      for (const d of targetDates) {
+        const blocks = TF.store.getBlocks(d);
+        let dayScheduledMins = 0;
+
+        for (const b of blocks) {
+          if (statsMode === 'daily') {
+            totalScheduledMins += b.durationMinutes;
+            dayScheduledMins += b.durationMinutes;
+            totalsByCat.set(b.categoryId, (totalsByCat.get(b.categoryId) || 0) + b.durationMinutes);
+          } else {
+            // Discretionary window intersection
+            const bStart = b.startMinutes;
+            const bEnd = b.startMinutes + b.durationMinutes;
+            const overlap = Math.max(0, Math.min(bEnd, discEnd) - Math.max(bStart, discStart));
+            if (overlap > 0) {
+              totalScheduledMins += overlap;
+              dayScheduledMins += overlap;
+              totalsByCat.set(b.categoryId, (totalsByCat.get(b.categoryId) || 0) + overlap);
+            }
+          }
+        }
+
+        const dayWindow = statsMode === 'daily' ? MINUTES_PER_DAY : discDurationPerDay;
+        const dayFree = Math.max(0, dayWindow - dayScheduledMins);
+        dailySummaries.push({
+          dateKey: d,
+          scheduledMins: dayScheduledMins,
+          freeMins: dayFree,
+          windowMins: dayWindow,
+          isCurrentSelected: d === selectedDate
+        });
+      }
+
+      const totalFreeMins = Math.max(0, totalWindowMins - totalScheduledMins);
+
+      // --- Scope Tabs HTML ---
+      const scopeTabsHtml = `
+        <div class="stats-scope-tabs" role="tablist" aria-label="統計週期切換">
+          <button type="button" class="stats-scope-btn ${statsScope === 'day' ? 'is-active' : ''}" data-stats-scope="day">📅 日統計</button>
+          <button type="button" class="stats-scope-btn ${statsScope === 'week' ? 'is-active' : ''}" data-stats-scope="week">📊 週統計</button>
+          <button type="button" class="stats-scope-btn ${statsScope === 'month' ? 'is-active' : ''}" data-stats-scope="month">🗓️ 月統計</button>
+        </div>
+      `;
+
+      // --- Mode Tabs HTML ---
+      const modeTabsHtml = `
+        <div class="stats-mode-tabs" role="tablist" aria-label="統計時間維度">
           <button type="button" class="stats-tab-btn ${statsMode === 'daily' ? 'is-active' : ''}" data-stats-mode="daily">全天（24 小時）</button>
           <button type="button" class="stats-tab-btn ${statsMode === 'discretionary' ? 'is-active' : ''}" data-stats-mode="discretionary">可支配時間</button>
         </div>
       `;
 
-      let bodyHtml = '';
-
-      if (statsMode === 'daily') {
-        const unscheduledMinutes = Math.max(0, MINUTES_PER_DAY - totalMins24h);
-        const breakdown = categories
-          .map((cat) => ({
-            cat,
-            minutes: totalsByCat24h.get(cat.id) || 0
-          }))
-          .filter((item) => item.minutes > 0)
-          .sort((a, b) => b.minutes - a.minutes);
-
-        const barSegments = breakdown.map((item) => {
-          const pct = Math.min(100, (item.minutes / MINUTES_PER_DAY) * 100);
-          return `<div class="stats-bar-seg" style="width:${pct.toFixed(2)}%; background:${item.cat.color}" title="${escapeHtml(item.cat.name)}: ${formatDuration(item.minutes)}"></div>`;
-        }).join('');
-
-        const listRows = breakdown.length
-          ? breakdown.map((item) => {
-              const pctOfDay = Math.round((item.minutes / MINUTES_PER_DAY) * 100);
-              return `
-                <div class="stats-row">
-                  <div class="stats-row-left">
-                    <span class="cat-dot" style="background:${item.cat.color}"></span>
-                    <span class="stats-cat-icon">${escapeHtml(item.cat.icon || '')}</span>
-                    <span class="stats-cat-name">${escapeHtml(item.cat.name)}</span>
-                  </div>
-                  <div class="stats-row-right">
-                    <span class="stats-hrs">${formatHoursDecimal(item.minutes)}</span>
-                    <span class="stats-pct">${pctOfDay}%</span>
-                  </div>
-                </div>
-              `;
-            }).join('')
-          : `<div class="empty-state">今日全天尚未安排任何活動方塊</div>`;
-
-        bodyHtml = `
-          <div class="stats-summary-cards">
-            <div class="stats-metric">
-              <span class="stats-metric-label">已排程</span>
-              <span class="stats-metric-val">${formatHoursDecimal(totalMins24h)}</span>
-            </div>
-            <div class="stats-metric">
-              <span class="stats-metric-label">剩餘可用</span>
-              <span class="stats-metric-val is-muted">${formatHoursDecimal(unscheduledMinutes)}</span>
-            </div>
+      // --- Scope Range Banner ---
+      const bannerHtml = `
+        <div class="stats-scope-banner">
+          <div class="stats-scope-info">
+            <span class="stats-scope-range">${escapeHtml(rangeTitle)}</span>
+            <span class="stats-scope-badge">${escapeHtml(scopeBadge)}</span>
           </div>
-          <div class="stats-bar-track" aria-label="24 小時分配比例">
-            ${barSegments}
-          </div>
-          <div class="stats-list">
-            ${listRows}
-          </div>
-        `;
-      } else {
-        const freeDiscMins = Math.max(0, discDuration - totalMinsDisc);
+        </div>
+      `;
 
+      // --- Discretionary Controls (if in discretionary mode) ---
+      let discControlsHtml = '';
+      if (statsMode === 'discretionary') {
         const startOptions = [];
         for (let m = 0; m < MINUTES_PER_DAY; m += 30) {
           startOptions.push(`<option value="${m}" ${m === discStart ? 'selected' : ''}>${formatTime(m)}</option>`);
@@ -897,56 +926,12 @@
           `;
         }).join('');
 
-        const breakdown = categories
-          .map((cat) => ({
-            cat,
-            minutes: totalsByCatDisc.get(cat.id) || 0
-          }))
-          .filter((item) => item.minutes > 0)
-          .sort((a, b) => b.minutes - a.minutes);
-
-        const barSegments = [
-          ...breakdown.map((item) => {
-            const pct = (item.minutes / discDuration) * 100;
-            return `<div class="stats-bar-seg" style="width:${pct.toFixed(2)}%; background:${item.cat.color}" title="${escapeHtml(item.cat.name)}: ${formatDuration(item.minutes)}"></div>`;
-          }),
-          freeDiscMins > 0
-            ? `<div class="stats-bar-seg is-free-seg" style="width:${((freeDiscMins / discDuration) * 100).toFixed(2)}%" title="剩餘自由時間: ${formatDuration(freeDiscMins)}"></div>`
-            : ''
-        ].join('');
-
-        const listRows = [
-          ...breakdown.map((item) => {
-            const pctOfWindow = Math.round((item.minutes / discDuration) * 100);
-            return `
-              <div class="stats-row">
-                <div class="stats-row-left">
-                  <span class="cat-dot" style="background:${item.cat.color}"></span>
-                  <span class="stats-cat-icon">${escapeHtml(item.cat.icon || '')}</span>
-                  <span class="stats-cat-name">${escapeHtml(item.cat.name)}</span>
-                </div>
-                <div class="stats-row-right">
-                  <span class="stats-hrs">${formatHoursDecimal(item.minutes)}</span>
-                  <span class="stats-pct">${pctOfWindow}%</span>
-                </div>
-              </div>
-            `;
-          }),
-          `<div class="stats-row">
-            <div class="stats-row-left">
-              <span class="cat-dot" style="background:#10B981"></span>
-              <span class="stats-cat-icon">🌱</span>
-              <span class="stats-cat-name" style="font-weight:700; color:#10B981;">完全自由時間</span>
-            </div>
-            <div class="stats-row-right">
-              <span class="stats-hrs" style="color:#10B981;">${formatHoursDecimal(freeDiscMins)}</span>
-              <span class="stats-pct">${Math.round((freeDiscMins / discDuration) * 100)}%</span>
-            </div>
-          </div>`
-        ].join('');
-
-        bodyHtml = `
+        discControlsHtml = `
           <div class="disc-controls">
+            <div class="disc-header-row">
+              <span class="disc-label">自訂每日可支配區間：</span>
+              <span class="disc-cur-duration">（每日 ${formatDuration(discDurationPerDay)}）</span>
+            </div>
             <div class="disc-time-inputs">
               <select class="disc-select" data-disc="start">${startOptions.join('')}</select>
               <span class="disc-to-label">至</span>
@@ -956,29 +941,160 @@
               ${presetChipsHtml}
             </div>
           </div>
+        `;
+      }
 
-          <div class="stats-summary-cards">
-            <div class="stats-metric">
-              <span class="stats-metric-label">時段總長</span>
-              <span class="stats-metric-val is-muted">${formatHoursDecimal(discDuration)}</span>
-            </div>
-            <div class="stats-metric">
-              <span class="stats-metric-label">自由可用</span>
-              <span class="stats-metric-val is-free">${formatHoursDecimal(freeDiscMins)}</span>
-            </div>
+      // --- Summary Metrics ---
+      const isMultiDay = numDays > 1;
+      const dailyAvgScheduled = isMultiDay ? totalScheduledMins / numDays : null;
+      const dailyAvgFree = isMultiDay ? totalFreeMins / numDays : null;
+
+      const summaryCardsHtml = `
+        <div class="stats-summary-cards ${isMultiDay ? 'has-averages' : ''}">
+          <div class="stats-metric">
+            <span class="stats-metric-label">${isMultiDay ? '期間總長' : '時段總長'}</span>
+            <span class="stats-metric-val is-muted">${formatHoursDecimal(totalWindowMins)}</span>
           </div>
-          <div class="stats-bar-track" aria-label="可支配時間分配比例">
-            ${barSegments}
+          <div class="stats-metric">
+            <span class="stats-metric-label">已排程</span>
+            <span class="stats-metric-val">${formatHoursDecimal(totalScheduledMins)}</span>
+            ${isMultiDay ? `<span class="stats-metric-sub">日均 ${formatHoursDecimal(dailyAvgScheduled)}</span>` : ''}
           </div>
-          <div class="stats-list">
-            ${listRows}
+          <div class="stats-metric">
+            <span class="stats-metric-label">${statsMode === 'discretionary' ? '自由時間' : '剩餘可用'}</span>
+            <span class="stats-metric-val is-free">${formatHoursDecimal(totalFreeMins)}</span>
+            ${isMultiDay ? `<span class="stats-metric-sub is-free">日均 ${formatHoursDecimal(dailyAvgFree)}</span>` : ''}
+          </div>
+        </div>
+      `;
+
+      // --- Week Sparkline/Bar Chart (Only for Week Scope) ---
+      let weekChartHtml = '';
+      if (statsScope === 'week' && dailySummaries.length === 7) {
+        const dayNames = ['一', '二', '三', '四', '五', '六', '日'];
+        const barCols = dailySummaries.map((ds, idx) => {
+          const dayNumber = parseInt(ds.dateKey.slice(8), 10);
+          const pct = Math.min(100, (ds.scheduledMins / ds.windowMins) * 100);
+          const isSelected = ds.isCurrentSelected;
+          return `
+            <div class="week-chart-col ${isSelected ? 'is-selected' : ''}" data-jump-date="${ds.dateKey}" title="${ds.dateKey} (週${dayNames[idx]}): 已排程 ${formatDuration(ds.scheduledMins)} / 自由 ${formatDuration(ds.freeMins)} (點擊跳轉)">
+              <span class="week-col-hrs">${formatHoursDecimal(ds.scheduledMins)}</span>
+              <div class="week-col-bar-wrap">
+                <div class="week-col-bar-fill" style="height: ${pct.toFixed(1)}%;"></div>
+              </div>
+              <div class="week-col-label">
+                <span class="week-col-dow">${dayNames[idx]}</span>
+                <span class="week-col-dom">${dayNumber}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        weekChartHtml = `
+          <div class="week-mini-chart-card">
+            <div class="week-chart-header">
+              <span class="week-chart-title">週七日排程趨勢</span>
+              <span class="week-chart-hint">點擊任一日可直接切換</span>
+            </div>
+            <div class="week-chart-bars">
+              ${barCols}
+            </div>
           </div>
         `;
       }
 
-      const fullHtml = tabsHtml + bodyHtml;
-      this.statsDesktopEl.innerHTML = fullHtml;
-      this.statsModalBodyEl.innerHTML = fullHtml;
+      // --- Progress Bar Track ---
+      const breakdown = categories
+        .map((cat) => ({
+          cat,
+          minutes: totalsByCat.get(cat.id) || 0
+        }))
+        .filter((item) => item.minutes > 0)
+        .sort((a, b) => b.minutes - a.minutes);
+
+      const barSegments = [
+        ...breakdown.map((item) => {
+          const pct = totalWindowMins > 0 ? (item.minutes / totalWindowMins) * 100 : 0;
+          return `<div class="stats-bar-seg" style="width:${pct.toFixed(2)}%; background:${item.cat.color}" title="${escapeHtml(item.cat.name)}: ${formatDuration(item.minutes)}"></div>`;
+        }),
+        totalFreeMins > 0
+          ? `<div class="stats-bar-seg is-free-seg" style="width:${((totalFreeMins / totalWindowMins) * 100).toFixed(2)}%" title="${statsMode === 'discretionary' ? '完全自由時間' : '未排程時間'}: ${formatDuration(totalFreeMins)}"></div>`
+          : ''
+      ].join('');
+
+      const barTrackHtml = `
+        <div class="stats-bar-container">
+          <div class="stats-bar-track" aria-label="時間分配比例">
+            ${barSegments}
+          </div>
+        </div>
+      `;
+
+      // --- Breakdown List ---
+      let listRows = '';
+      if (breakdown.length === 0 && totalScheduledMins === 0) {
+        listRows = `<div class="empty-state">${statsScope === 'day' ? '今日' : statsScope === 'week' ? '本週' : '本月'}尚未安排任何活動方塊</div>`;
+      } else {
+        const catRows = breakdown.map((item) => {
+          const pct = totalWindowMins > 0 ? Math.round((item.minutes / totalWindowMins) * 100) : 0;
+          const avgPerDayStr = isMultiDay ? `<span class="stats-sub-hrs">日均 ${formatHoursDecimal(item.minutes / numDays)}</span>` : '';
+          return `
+            <div class="stats-row">
+              <div class="stats-row-left">
+                <span class="cat-dot" style="background:${item.cat.color}"></span>
+                <span class="stats-cat-icon">${escapeHtml(item.cat.icon || '')}</span>
+                <span class="stats-cat-name">${escapeHtml(item.cat.name)}</span>
+              </div>
+              <div class="stats-row-right">
+                <div class="stats-val-group">
+                  <span class="stats-hrs">${formatHoursDecimal(item.minutes)}</span>
+                  ${avgPerDayStr}
+                </div>
+                <span class="stats-pct">${pct}%</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const freeRow = statsMode === 'discretionary' ? `
+          <div class="stats-row is-free-row">
+            <div class="stats-row-left">
+              <span class="cat-dot" style="background:#10B981"></span>
+              <span class="stats-cat-icon">🌱</span>
+              <span class="stats-cat-name" style="font-weight:700; color:#10B981;">完全自由時間</span>
+            </div>
+            <div class="stats-row-right">
+              <div class="stats-val-group">
+                <span class="stats-hrs" style="color:#10B981;">${formatHoursDecimal(totalFreeMins)}</span>
+                ${isMultiDay ? `<span class="stats-sub-hrs" style="color:#10B981;">日均 ${formatHoursDecimal(dailyAvgFree)}</span>` : ''}
+              </div>
+              <span class="stats-pct" style="color:#10B981; font-weight:700;">${totalWindowMins > 0 ? Math.round((totalFreeMins / totalWindowMins) * 100) : 0}%</span>
+            </div>
+          </div>
+        ` : '';
+
+        listRows = catRows + freeRow;
+      }
+
+      const listHtml = `
+        <div class="stats-list">
+          ${listRows}
+        </div>
+      `;
+
+      const fullHtml = `
+        ${scopeTabsHtml}
+        ${modeTabsHtml}
+        ${bannerHtml}
+        ${discControlsHtml}
+        ${summaryCardsHtml}
+        ${weekChartHtml}
+        ${barTrackHtml}
+        ${listHtml}
+      `;
+
+      if (this.statsDesktopEl) this.statsDesktopEl.innerHTML = fullHtml;
+      if (this.statsModalBodyEl) this.statsModalBodyEl.innerHTML = fullHtml;
     }
 
     // --- Modals ---

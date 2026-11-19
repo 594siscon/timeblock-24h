@@ -152,6 +152,7 @@
               settings: {
                 theme: parsed.settings?.theme || 'light',
                 hourHeight: parsed.settings?.hourHeight ?? 64,
+                statsScope: parsed.settings?.statsScope || 'day',
                 statsMode: parsed.settings?.statsMode || 'daily',
                 discretionaryStart: parsed.settings?.discretionaryStart ?? 1140, // 19:00
                 discretionaryEnd: parsed.settings?.discretionaryEnd ?? 1380 // 23:00
@@ -172,6 +173,7 @@
         settings: {
           theme: 'light',
           hourHeight: 64,
+          statsScope: 'day',
           statsMode: 'daily',
           discretionaryStart: 1140, // 19:00
           discretionaryEnd: 1380 // 23:00
@@ -257,6 +259,11 @@
       // val can be 'fit' or a number (e.g. 44, 64, 88)
       this.state.settings.hourHeight = val === 'fit' ? 'fit' : Number(val);
       this.notify('zoom');
+    }
+
+    setStatsScope(scope) {
+      this.state.settings.statsScope = ['week', 'month'].includes(scope) ? scope : 'day';
+      this.notify('stats');
     }
 
     setStatsMode(mode) {

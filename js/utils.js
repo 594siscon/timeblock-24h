@@ -73,6 +73,53 @@
     };
   }
 
+  function getWeekDates(dateKey) {
+    const dt = parseDateKey(dateKey);
+    const day = dt.getDay(); // 0 is Sun, 1 is Mon...
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(dt);
+    monday.setDate(dt.getDate() + diffToMonday);
+
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      dates.push(toDateKey(d));
+    }
+    return dates;
+  }
+
+  function formatWeekRangeDisplay(dateKey) {
+    const dates = getWeekDates(dateKey);
+    const startDt = parseDateKey(dates[0]);
+    const endDt = parseDateKey(dates[6]);
+    const sMonth = startDt.getMonth() + 1;
+    const sDay = startDt.getDate();
+    const eMonth = endDt.getMonth() + 1;
+    const eDay = endDt.getDate();
+    return `${sMonth}/${sDay} (週一) – ${eMonth}/${eDay} (週日)`;
+  }
+
+  function getMonthDates(dateKey) {
+    const dt = parseDateKey(dateKey);
+    const y = dt.getFullYear();
+    const m = dt.getMonth(); // 0-based
+    const totalDays = new Date(y, m + 1, 0).getDate();
+    const dates = [];
+    for (let d = 1; d <= totalDays; d++) {
+      dates.push(`${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+    }
+    return dates;
+  }
+
+  function formatMonthRangeDisplay(dateKey) {
+    const dt = parseDateKey(dateKey);
+    const y = dt.getFullYear();
+    const m = dt.getMonth() + 1;
+    const totalDays = new Date(y, m, 0).getDate();
+    return `${y} 年 ${m} 月（全月 ${totalDays} 天）`;
+  }
+
   function escapeHtml(str) {
     if (str == null) return '';
     return String(str)
@@ -166,6 +213,10 @@
     parseDateKey,
     addDays,
     formatDateDisplay,
+    getWeekDates,
+    formatWeekRangeDisplay,
+    getMonthDates,
+    formatMonthRangeDisplay,
     escapeHtml,
     hexToRgba,
     computeBlockLayout
