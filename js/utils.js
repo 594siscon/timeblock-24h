@@ -2,7 +2,10 @@
   'use strict';
 
   const TF = (global.TimeFlow = global.TimeFlow || {});
+  global.TimeBlock = TF; // Alias for 時間方塊
 
+  const APP_NAME = '時間方塊';
+  const APP_VERSION = 'v1.2.0';
   const MINUTES_PER_DAY = 1440;
   const SNAP_MINUTES = 15;
   const DEFAULT_DURATION = 60;
@@ -199,7 +202,12 @@
     return layout;
   }
 
+  TF.APP_NAME = APP_NAME;
+  TF.VERSION = APP_VERSION;
+
   TF.utils = {
+    APP_NAME,
+    APP_VERSION,
     MINUTES_PER_DAY,
     SNAP_MINUTES,
     DEFAULT_DURATION,

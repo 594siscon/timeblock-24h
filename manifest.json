@@ -1,7 +1,7 @@
 {
-  "name": "時光方塊 · 24H 時間管理",
-  "short_name": "時光方塊",
-  "description": "電腦與 iOS 共用的 24 小時拖曳式時間區塊管理 App",
+  "name": "時間方塊 · 24H 時間管理",
+  "short_name": "時間方塊",
+  "description": "電腦與 iOS 共用的 24 小時拖曳式時間方塊管理 App",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

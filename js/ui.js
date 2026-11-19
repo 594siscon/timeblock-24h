@@ -611,6 +611,20 @@
           }
         });
       });
+
+      // Corner version badge click: show version info & check PWA cache update
+      document.getElementById('cornerVersionBadge')?.addEventListener('click', async () => {
+        const ver = TF.VERSION || 'v1.2.0';
+        this.showToast(`時間方塊 ${ver} · 已是最新版本`);
+        if ('serviceWorker' in navigator) {
+          try {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg) {
+              await reg.update();
+            }
+          } catch (_) {}
+        }
+      });
     }
 
     async handleEmailAuth(mode) {
