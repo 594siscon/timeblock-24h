@@ -46,16 +46,17 @@
       </div>
 
       <div class="header-right">
-        <div class="zoom-group desktop-only" title="調整時間軸高度密度">
-          <button type="button" class="zoom-btn" data-zoom="48">緊湊</button>
+        <div class="zoom-group" id="headerZoomGroup" title="調整時間軸檢視密度">
+          <button type="button" class="zoom-btn" data-zoom="fit" title="縮小顯示整天 24 小時（免捲動）">全覽</button>
+          <button type="button" class="zoom-btn desktop-only" data-zoom="44">緊湊</button>
           <button type="button" class="zoom-btn is-active" data-zoom="64">標準</button>
-          <button type="button" class="zoom-btn" data-zoom="88">寬鬆</button>
+          <button type="button" class="zoom-btn desktop-only" data-zoom="88">寬鬆</button>
         </div>
         <button type="button" class="sync-status-btn" id="btnSyncModal" title="雲端即時同步設定">
           <span class="sync-dot" id="syncStatusDot"></span>
           <span class="sync-btn-text" id="syncStatusText">雲端同步</span>
         </button>
-        <button type="button" class="icon-btn mobile-only" id="btnMobileStats" title="今日統計" aria-label="今日統計">📊</button>
+        <button type="button" class="icon-btn mobile-only" id="btnMobileStats" title="時間分配統計" aria-label="時間分配統計">📊</button>
         <button type="button" class="icon-btn" id="btnThemeToggle" title="切換深淺色" aria-label="切換深淺色">🌙</button>
       </div>
     </header>
@@ -114,8 +115,9 @@
         <div class="stats-panel" id="statsContentDesktop"></div>
 
         <div class="tools-section">
-          <h3 class="tools-heading">快捷操作</h3>
+          <h3 class="tools-heading">一日模板與排程</h3>
           <div class="tools-grid">
+            <button type="button" class="tool-btn" id="btnOpenDayTemplates">📅 一日活動模板庫（套用／儲存）</button>
             <button type="button" class="tool-btn" id="btnCopyYesterday">📋 複製昨日排程</button>
             <button type="button" class="tool-btn is-danger-text" id="btnClearDay">🗑️ 清空當日排程</button>
           </div>
@@ -133,8 +135,9 @@
     <!-- Mobile Bottom Draggable Activity Dock (iOS / Mobile Only) -->
     <div class="mobile-dock mobile-only" aria-label="可拖曳活動方塊列">
       <div class="mobile-dock-bar">
-        <span class="mobile-dock-hint">👆 往上拖曳方塊填入時間表</span>
+        <span class="mobile-dock-hint">👆 往上拖曳填入時間表</span>
         <div class="mobile-dock-actions">
+          <button type="button" class="btn-xs-secondary" id="btnDockDayTemplates" title="一日模板">📅 模板</button>
           <button type="button" class="btn-xs-secondary" data-open-categories>類別</button>
           <button type="button" class="btn-xs-primary" data-add-template>＋ 新增</button>
           <button type="button" class="btn-xs-secondary" id="btnOpenMobileDrawer">展開 ▲</button>
@@ -153,7 +156,8 @@
           <p class="panel-hint">長按方塊即可拖曳到 24 小時表</p>
         </div>
         <div class="panel-header-actions">
-          <button type="button" class="btn-sm-secondary" data-open-categories>管理類別</button>
+          <button type="button" class="btn-sm-secondary" id="btnDrawerDayTemplates">📅 一日模板</button>
+          <button type="button" class="btn-sm-secondary" data-open-categories>類別</button>
           <button type="button" class="btn-sm-primary" data-add-template>＋ 新增</button>
           <button type="button" class="icon-btn-sm" id="btnCloseMobileDrawer" aria-label="關閉">✕</button>
         </div>
@@ -319,9 +323,9 @@
         <div id="statsContentModal"></div>
         <hr class="modal-divider" />
         <div class="mobile-stats-actions">
+          <button type="button" class="tool-btn" data-mobile-tool="btnOpenDayTemplates">📅 一日活動模板庫</button>
           <button type="button" class="tool-btn" data-mobile-tool="btnCopyYesterday">📋 複製昨日排程</button>
           <button type="button" class="tool-btn" data-mobile-tool="btnExportData">⬇️ 匯出備份</button>
-          <button type="button" class="tool-btn" data-mobile-tool="btnImportData">⬆️ 匯入備份</button>
           <button type="button" class="tool-btn is-danger-text" data-mobile-tool="btnClearDay">🗑️ 清空當日</button>
         </div>
       </div>
@@ -422,6 +426,71 @@
             <button type="submit" class="btn-secondary">儲存 Firebase 設定</button>
           </form>
         </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 6: Calendar Month Picker (手機與電腦共用直覺日曆) -->
+  <div class="modal-backdrop" id="calendarModal" hidden>
+    <div class="modal-card modal-card-sm calendar-modal-card" role="dialog" aria-modal="true" aria-labelledby="calendarModalMonthLabel">
+      <div class="modal-header">
+        <div class="cal-nav">
+          <button type="button" class="icon-btn-sm" id="calPrevMonth" title="上個月" aria-label="上個月">‹</button>
+          <h3 class="modal-title" id="calendarModalMonthLabel">2026 年 11 月</h3>
+          <button type="button" class="icon-btn-sm" id="calNextMonth" title="下個月" aria-label="下個月">›</button>
+        </div>
+        <div class="cal-header-actions">
+          <button type="button" class="btn-xs-secondary" id="calJumpToday">今天</button>
+          <button type="button" class="icon-btn-sm" data-close-modal="calendarModal" aria-label="關閉">✕</button>
+        </div>
+      </div>
+      <div class="modal-body calendar-modal-body">
+        <div class="cal-weekdays">
+          <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+        </div>
+        <div class="cal-grid" id="calendarGridDays"></div>
+        <div class="cal-footer-hint">
+          <span class="cal-dot-sample"></span> 有小圓點的日子代表已有排程
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 7: Day Templates (一日活動模板庫) -->
+  <div class="modal-backdrop" id="dayTemplateModal" hidden>
+    <div class="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="dayTemplateModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="dayTemplateModalTitle">📅 一日活動模板庫</h3>
+        <button type="button" class="icon-btn-sm" data-close-modal="dayTemplateModal" aria-label="關閉">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="day-tpl-top-bar">
+          <p class="panel-hint m-0">將整天規律排程存為模板，新的一天一鍵直接套入！</p>
+          <button type="button" class="btn-sm-primary" id="btnSaveCurrentAsDayTemplate">＋ 將今日儲存為模板</button>
+        </div>
+
+        <div id="saveDayTemplatePanel" class="save-day-tpl-panel" hidden>
+          <h4 class="save-day-tpl-title">建立新模板（以當前排程為基底）</h4>
+          <form id="saveDayTemplateForm" class="save-day-tpl-form">
+            <div class="form-row-cat">
+              <div class="form-group flex-1">
+                <label class="form-label" for="newDayTplName">模板名稱</label>
+                <input type="text" id="newDayTplName" class="form-input" placeholder="例如：常規工作日、衝刺日、放假生活..." required />
+              </div>
+              <div class="form-group cat-icon-field">
+                <label class="form-label" for="newDayTplIcon">圖示</label>
+                <input type="text" id="newDayTplIcon" class="form-input text-center" maxlength="4" value="📅" />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn-secondary" id="btnCancelSaveDayTemplate">取消</button>
+              <button type="submit" class="btn-primary">儲存為新模板</button>
+            </div>
+          </form>
+          <hr class="modal-divider" />
+        </div>
+
+        <div class="day-tpl-list" id="dayTemplateList"></div>
       </div>
     </div>
   </div>

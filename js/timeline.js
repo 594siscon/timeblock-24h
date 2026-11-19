@@ -15,6 +15,7 @@
   class TimelineView {
     constructor() {
       this.scrollEl = document.getElementById('timelineScroll');
+      this.containerEl = document.querySelector('.timeline-container');
       this.gridEl = document.getElementById('timelineGrid');
       this.hoursColEl = document.getElementById('timelineHours');
       this.slotsLayerEl = document.getElementById('timelineSlots');
@@ -26,10 +27,21 @@
       this.buildStaticGrid();
       this.updateNowLine();
       setInterval(() => this.updateNowLine(), 30000);
+
+      window.addEventListener('resize', () => {
+        if (TF.store.state.settings.hourHeight === 'fit') {
+          this.render();
+        }
+      });
     }
 
     getHourHeight() {
-      return TF.store.state.settings.hourHeight || 64;
+      const cfg = TF.store.state.settings.hourHeight;
+      if (cfg === 'fit') {
+        const available = Math.max(320, (this.scrollEl?.clientHeight || window.innerHeight - 140) - 36);
+        return Math.max(18, Math.floor(available / 24));
+      }
+      return Number(cfg) || 64;
     }
 
     minutesToPx(minutes) {
@@ -74,9 +86,12 @@
     applyZoom() {
       const hourHeight = this.getHourHeight();
       const totalHeight = hourHeight * 24;
+      const isFit = TF.store.state.settings.hourHeight === 'fit' || hourHeight <= 34;
       document.documentElement.style.setProperty('--hour-height', `${hourHeight}px`);
       this.gridEl.style.height = `${totalHeight}px`;
       this.hoursColEl.style.height = `${totalHeight}px`;
+      this.gridEl.classList.toggle('is-fit-mode', isFit);
+      if (this.containerEl) this.containerEl.classList.toggle('is-fit-mode', isFit);
       this.updateNowLine();
     }
 
@@ -96,6 +111,10 @@
     }
 
     scrollToSmartPosition() {
+      if (TF.store.state.settings.hourHeight === 'fit') {
+        this.scrollEl.scrollTo({ top: 0, behavior: 'auto' });
+        return;
+      }
       const todayKey = toDateKey(new Date());
       let targetMins = 7 * 60; // Default 07:00
       if (TF.store.selectedDate === todayKey) {

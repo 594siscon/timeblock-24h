@@ -313,6 +313,7 @@
       return {
         categories: TF.store.state.categories,
         templates: TF.store.state.templates,
+        dayTemplates: TF.store.state.dayTemplates || [],
         blocksByDate: TF.store.state.blocksByDate,
         settings: TF.store.state.settings
       };
@@ -421,6 +422,9 @@
       try {
         TF.store.state.categories = payload.categories;
         TF.store.state.templates = payload.templates;
+        if (Array.isArray(payload.dayTemplates)) {
+          TF.store.state.dayTemplates = payload.dayTemplates;
+        }
         TF.store.state.blocksByDate = payload.blocksByDate || {};
         if (payload.settings) {
           TF.store.state.settings = {

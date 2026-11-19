@@ -1884,6 +1884,13 @@ button {
     left: -44px;
     font-size: 9px;
   }
+  .zoom-group {
+    padding: 1px;
+  }
+  .zoom-btn {
+    padding: 3px 6px;
+    font-size: 11px;
+  }
   /* Larger touch resize hit areas on iOS / mobile */
   .resize-handle {
     height: 22px;
@@ -1894,3 +1901,352 @@ button {
     bottom: calc(118px + env(safe-area-inset-bottom));
   }
 }
+
+/* ==================== Full 24H Fit Mode ==================== */
+.timeline-container.is-fit-mode {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.timeline-grid.is-fit-mode .quarter-line {
+  display: none;
+}
+
+.timeline-grid.is-fit-mode .hour-label {
+  font-size: 10px;
+  transform: translateY(-5px);
+}
+
+.timeline-grid.is-fit-mode .time-block {
+  border-radius: 5px;
+  border-left-width: 3px;
+}
+
+.timeline-grid.is-fit-mode .time-block-inner {
+  padding: 0 4px;
+  justify-content: center;
+}
+
+.timeline-grid.is-fit-mode .time-block-title {
+  font-size: 11px;
+}
+
+.timeline-grid.is-fit-mode .time-block-icon {
+  font-size: 10px;
+}
+
+.timeline-grid.is-fit-mode .time-block-time-inline {
+  font-size: 9px;
+}
+
+.timeline-grid.is-fit-mode .resize-knob {
+  height: 3px;
+}
+
+/* ==================== Calendar Month Picker Modal ==================== */
+.calendar-modal-card {
+  max-width: 350px;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendar-modal-body {
+  padding: 14px 16px 16px;
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.cal-day-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.cal-day-cell:hover {
+  background: var(--bg-hover);
+}
+
+.cal-day-cell.is-other-month {
+  opacity: 0.32;
+  color: var(--text-muted);
+}
+
+.cal-day-cell.is-today {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.cal-day-cell.is-selected {
+  background: var(--accent) !important;
+  color: #FFFFFF !important;
+  font-weight: 800;
+  box-shadow: var(--shadow-sm);
+}
+
+.cal-day-num {
+  line-height: 1;
+}
+
+.cal-event-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 3px;
+}
+
+.cal-day-cell.is-selected .cal-event-dot {
+  background: #FFFFFF;
+}
+
+.cal-footer-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 12px;
+}
+
+.cal-dot-sample {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ==================== Day Templates Modal ==================== */
+.day-tpl-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.m-0 { margin: 0 !important; }
+
+.save-day-tpl-panel {
+  background: var(--bg-subtle);
+  border: 1.5px dashed var(--accent);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.save-day-tpl-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.day-tpl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 54vh;
+  overflow-y: auto;
+}
+
+.day-tpl-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 13px;
+  padding: 12px 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.day-tpl-card:hover {
+  border-color: var(--accent);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.day-tpl-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.day-tpl-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.day-tpl-card-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.day-tpl-chips-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.day-tpl-mini-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--chip-border, var(--border-color));
+  color: var(--chip-color, var(--text-primary));
+  background: var(--chip-bg, var(--bg-surface));
+}
+
+.day-tpl-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* ==================== Discretionary Time Stats ==================== */
+.stats-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 3px;
+  margin-bottom: 12px;
+}
+
+.stats-tab-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 7px;
+  transition: all 0.15s;
+}
+
+.stats-tab-btn.is-active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.disc-controls {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.disc-time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.disc-select {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+}
+
+.disc-to-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.disc-presets-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.disc-chip {
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.disc-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.disc-chip.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.stats-metric-val.is-free {
+  color: #10B981 !important;
+}
+
+.stats-bar-seg.is-free-seg {
+  background: repeating-linear-gradient(
+    45deg,
+    #10B981,
+    #10B981 7px,
+    #059669 7px,
+    #059669 14px
+  );
+}
+

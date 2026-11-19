@@ -40,6 +40,40 @@
     { id: 'tpl_leisure', title: '休閒娛樂', categoryId: 'cat_fun', defaultDuration: 60 }
   ];
 
+  const DEFAULT_DAY_TEMPLATES = [
+    {
+      id: 'dtpl_workday',
+      name: '常規工作日',
+      icon: '💼',
+      description: '適合週一至週五專注工作與規律生活作息',
+      blocks: [
+        { title: '睡眠時間', categoryId: 'cat_rest', startMinutes: 0, durationMinutes: 420 },
+        { title: '晨間準備與通勤', categoryId: 'cat_life', startMinutes: 450, durationMinutes: 60 },
+        { title: '上午深度工作', categoryId: 'cat_work', startMinutes: 540, durationMinutes: 180 },
+        { title: '午餐與午休', categoryId: 'cat_life', startMinutes: 720, durationMinutes: 60 },
+        { title: '下午專案推進', categoryId: 'cat_work', startMinutes: 810, durationMinutes: 240 },
+        { title: '晚餐與通勤', categoryId: 'cat_life', startMinutes: 1080, durationMinutes: 60 },
+        { title: '運動健身', categoryId: 'cat_sport', startMinutes: 1170, durationMinutes: 60 },
+        { title: '閱讀與學習', categoryId: 'cat_study', startMinutes: 1260, durationMinutes: 90 },
+        { title: '睡前放鬆', categoryId: 'cat_rest', startMinutes: 1380, durationMinutes: 60 }
+      ]
+    },
+    {
+      id: 'dtpl_weekend',
+      name: '週末充電日',
+      icon: '🌿',
+      description: '放鬆身心、戶外運動與自由休閒娛樂',
+      blocks: [
+        { title: '充足睡眠', categoryId: 'cat_rest', startMinutes: 0, durationMinutes: 510 },
+        { title: '悠閒早午餐', categoryId: 'cat_life', startMinutes: 540, durationMinutes: 90 },
+        { title: '戶外運動', categoryId: 'cat_sport', startMinutes: 660, durationMinutes: 120 },
+        { title: '自由閱讀與學習', categoryId: 'cat_study', startMinutes: 840, durationMinutes: 150 },
+        { title: '聚餐與休閒娛樂', categoryId: 'cat_fun', startMinutes: 1020, durationMinutes: 180 },
+        { title: '沉澱與睡眠準備', categoryId: 'cat_rest', startMinutes: 1260, durationMinutes: 120 }
+      ]
+    }
+  ];
+
   function buildInitialSampleBlocks(todayKey) {
     return {
       [todayKey]: [
@@ -111,10 +145,16 @@
             return {
               categories: parsed.categories,
               templates: parsed.templates,
+              dayTemplates: Array.isArray(parsed.dayTemplates) && parsed.dayTemplates.length > 0
+                ? parsed.dayTemplates
+                : DEFAULT_DAY_TEMPLATES.map((dt) => ({ ...dt })),
               blocksByDate: parsed.blocksByDate || {},
               settings: {
                 theme: parsed.settings?.theme || 'light',
-                hourHeight: parsed.settings?.hourHeight || 64
+                hourHeight: parsed.settings?.hourHeight ?? 64,
+                statsMode: parsed.settings?.statsMode || 'daily',
+                discretionaryStart: parsed.settings?.discretionaryStart ?? 1140, // 19:00
+                discretionaryEnd: parsed.settings?.discretionaryEnd ?? 1380 // 23:00
               }
             };
           }
@@ -127,10 +167,14 @@
       const initial = {
         categories: DEFAULT_CATEGORIES.map((c) => ({ ...c })),
         templates: DEFAULT_TEMPLATES.map((t) => ({ ...t })),
+        dayTemplates: DEFAULT_DAY_TEMPLATES.map((dt) => ({ ...dt })),
         blocksByDate: buildInitialSampleBlocks(todayKey),
         settings: {
           theme: 'light',
-          hourHeight: 64
+          hourHeight: 64,
+          statsMode: 'daily',
+          discretionaryStart: 1140, // 19:00
+          discretionaryEnd: 1380 // 23:00
         }
       };
       this.save(initial);
@@ -161,6 +205,7 @@
       const snapshot = JSON.stringify({
         categories: this.state.categories,
         templates: this.state.templates,
+        dayTemplates: this.state.dayTemplates,
         blocksByDate: this.state.blocksByDate
       });
       this.undoStack.push({ label, snapshot });
@@ -173,6 +218,7 @@
       const restored = JSON.parse(last.snapshot);
       this.state.categories = restored.categories;
       this.state.templates = restored.templates;
+      if (restored.dayTemplates) this.state.dayTemplates = restored.dayTemplates;
       this.state.blocksByDate = restored.blocksByDate;
       this.selectedBlockId = null;
       this.notify('undo');
@@ -207,9 +253,26 @@
       this.notify('settings');
     }
 
-    setHourHeight(px) {
-      this.state.settings.hourHeight = px;
+    setHourHeight(val) {
+      // val can be 'fit' or a number (e.g. 44, 64, 88)
+      this.state.settings.hourHeight = val === 'fit' ? 'fit' : Number(val);
       this.notify('zoom');
+    }
+
+    setStatsMode(mode) {
+      this.state.settings.statsMode = mode === 'discretionary' ? 'discretionary' : 'daily';
+      this.notify('stats');
+    }
+
+    setDiscretionaryWindow(startMinutes, endMinutes) {
+      this.state.settings.discretionaryStart = clamp(snapMinutes(startMinutes), 0, MINUTES_PER_DAY - SNAP_MINUTES);
+      this.state.settings.discretionaryEnd = clamp(snapMinutes(endMinutes), this.state.settings.discretionaryStart + SNAP_MINUTES, MINUTES_PER_DAY);
+      this.notify('stats');
+    }
+
+    hasEventsOnDate(dateKey) {
+      const list = this.state.blocksByDate[dateKey];
+      return Array.isArray(list) && list.length > 0;
     }
 
     // --- Categories ---
@@ -310,6 +373,86 @@
       this.pushUndo('刪除活動方塊');
       this.state.templates = this.state.templates.filter((t) => t.id !== id);
       this.notify('templates');
+    }
+
+    // --- Day Templates (一日模板) ---
+    getDayTemplates() {
+      if (!Array.isArray(this.state.dayTemplates)) {
+        this.state.dayTemplates = DEFAULT_DAY_TEMPLATES.map((dt) => ({ ...dt }));
+      }
+      return this.state.dayTemplates;
+    }
+
+    getDayTemplateById(id) {
+      return this.getDayTemplates().find((t) => t.id === id);
+    }
+
+    saveCurrentDayAsTemplate(name, icon = '📋') {
+      const currentBlocks = this.getBlocks(this.selectedDate);
+      if (!currentBlocks || currentBlocks.length === 0) return null;
+
+      this.pushUndo('建立一日模板');
+      const cleanBlocks = currentBlocks
+        .map((b) => ({
+          title: b.title,
+          categoryId: b.categoryId,
+          startMinutes: b.startMinutes,
+          durationMinutes: b.durationMinutes,
+          note: b.note || ''
+        }))
+        .sort((a, b) => a.startMinutes - b.startMinutes);
+
+      const newTpl = {
+        id: uid('dtpl'),
+        name: (name || '未命名一日模板').trim(),
+        icon: icon || '📋',
+        description: `包含 ${cleanBlocks.length} 項活動安排`,
+        blocks: cleanBlocks
+      };
+
+      if (!Array.isArray(this.state.dayTemplates)) {
+        this.state.dayTemplates = [];
+      }
+      this.state.dayTemplates.push(newTpl);
+      this.notify('dayTemplates');
+      return newTpl;
+    }
+
+    applyDayTemplate(templateId, { overwrite = true } = {}) {
+      const tpl = this.getDayTemplateById(templateId);
+      if (!tpl || !Array.isArray(tpl.blocks) || tpl.blocks.length === 0) return 0;
+
+      this.pushUndo(`套用模板「${tpl.name}」`);
+
+      if (!this.state.blocksByDate[this.selectedDate]) {
+        this.state.blocksByDate[this.selectedDate] = [];
+      }
+
+      if (overwrite) {
+        this.state.blocksByDate[this.selectedDate] = [];
+      }
+
+      const newBlocks = tpl.blocks.map((b) => ({
+        id: uid('blk'),
+        date: this.selectedDate,
+        title: b.title,
+        categoryId: b.categoryId,
+        startMinutes: b.startMinutes,
+        durationMinutes: b.durationMinutes,
+        note: b.note || ''
+      }));
+
+      this.state.blocksByDate[this.selectedDate].push(...newBlocks);
+      this.selectedBlockId = null;
+      this.notify('blocks');
+      return newBlocks.length;
+    }
+
+    deleteDayTemplate(id) {
+      this.pushUndo('刪除一日模板');
+      this.state.dayTemplates = this.getDayTemplates().filter((t) => t.id !== id);
+      this.notify('dayTemplates');
+      return true;
     }
 
     // --- Time Blocks ---
@@ -449,7 +592,13 @@
       this.pushUndo('匯入備份');
       this.state.categories = parsed.categories;
       this.state.templates = parsed.templates;
+      if (Array.isArray(parsed.dayTemplates)) {
+        this.state.dayTemplates = parsed.dayTemplates;
+      }
       this.state.blocksByDate = parsed.blocksByDate || {};
+      if (parsed.settings) {
+        this.state.settings = { ...this.state.settings, ...parsed.settings };
+      }
       this.selectedBlockId = null;
       this.notify('import');
     }

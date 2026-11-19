@@ -42,9 +42,7 @@
     });
 
     document.getElementById('btnDateDisplay').addEventListener('click', () => {
-      const picker = document.getElementById('datePickerInput');
-      if (picker.showPicker) picker.showPicker();
-      else picker.click();
+      TF.ui.openCalendarModal();
     });
 
     // Theme toggle
@@ -53,10 +51,11 @@
       TF.store.setTheme(next);
     });
 
-    // Zoom density buttons
+    // Zoom density buttons (including 'fit' for full 24H view)
     document.querySelectorAll('[data-zoom]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        TF.store.setHourHeight(Number(btn.dataset.zoom));
+        const val = btn.dataset.zoom;
+        TF.store.setHourHeight(val === 'fit' ? 'fit' : Number(val));
       });
     });
 

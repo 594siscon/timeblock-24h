@@ -102,6 +102,26 @@
       this.syncEmailFormEl = document.getElementById('syncEmailForm');
       this.syncEmailInput = document.getElementById('syncEmailInput');
       this.syncPasswordInput = document.getElementById('syncPasswordInput');
+
+      // Calendar Modal
+      this.calendarModalEl = document.getElementById('calendarModal');
+      this.calendarModalMonthLabel = document.getElementById('calendarModalMonthLabel');
+      this.calendarGridDays = document.getElementById('calendarGridDays');
+      this.calPrevMonthBtn = document.getElementById('calPrevMonth');
+      this.calNextMonthBtn = document.getElementById('calNextMonth');
+      this.calJumpTodayBtn = document.getElementById('calJumpToday');
+      this.calYear = new Date().getFullYear();
+      this.calMonth = new Date().getMonth();
+
+      // Day Templates Modal
+      this.dayTemplateModalEl = document.getElementById('dayTemplateModal');
+      this.dayTemplateListEl = document.getElementById('dayTemplateList');
+      this.btnSaveCurrentAsDayTemplate = document.getElementById('btnSaveCurrentAsDayTemplate');
+      this.saveDayTemplatePanel = document.getElementById('saveDayTemplatePanel');
+      this.saveDayTemplateForm = document.getElementById('saveDayTemplateForm');
+      this.newDayTplName = document.getElementById('newDayTplName');
+      this.newDayTplIcon = document.getElementById('newDayTplIcon');
+      this.btnCancelSaveDayTemplate = document.getElementById('btnCancelSaveDayTemplate');
     }
 
     populateTimeOptions() {
@@ -392,6 +412,128 @@
         await TF.sync.signOut();
         this.showToast('已登出 Google 同步帳號');
       });
+
+      // Calendar navigation & day cell clicks
+      this.calPrevMonthBtn?.addEventListener('click', () => this.shiftCalendarMonth(-1));
+      this.calNextMonthBtn?.addEventListener('click', () => this.shiftCalendarMonth(1));
+      this.calJumpTodayBtn?.addEventListener('click', () => {
+        TF.store.setDate(TF.utils.toDateKey(new Date()));
+        this.closeModal(this.calendarModalEl);
+        TF.timeline.scrollToSmartPosition();
+      });
+
+      this.calendarGridDays?.addEventListener('click', (e) => {
+        const cell = e.target.closest('[data-cal-date]');
+        if (!cell) return;
+        const dateKey = cell.dataset.calDate;
+        TF.store.setDate(dateKey);
+        this.closeModal(this.calendarModalEl);
+        TF.timeline.scrollToSmartPosition();
+      });
+
+      // Day template modal openers & actions
+      document.getElementById('btnOpenDayTemplates')?.addEventListener('click', () => this.openDayTemplateModal());
+      document.getElementById('btnDockDayTemplates')?.addEventListener('click', () => this.openDayTemplateModal());
+      document.getElementById('btnDrawerDayTemplates')?.addEventListener('click', () => {
+        this.closeMobileDrawer();
+        this.openDayTemplateModal();
+      });
+
+      this.btnSaveCurrentAsDayTemplate?.addEventListener('click', () => {
+        const currentBlocks = TF.store.getBlocks();
+        if (!currentBlocks || currentBlocks.length === 0) {
+          this.showToast('今日尚無任何活動方塊可儲存為模板');
+          return;
+        }
+        this.saveDayTemplatePanel.hidden = false;
+        this.newDayTplName.value = '';
+        this.newDayTplName.focus();
+      });
+
+      this.btnCancelSaveDayTemplate?.addEventListener('click', () => {
+        this.saveDayTemplatePanel.hidden = true;
+      });
+
+      this.saveDayTemplateForm?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = this.newDayTplName.value.trim();
+        if (!name) return;
+        const icon = this.newDayTplIcon.value.trim() || '📅';
+        const tpl = TF.store.saveCurrentDayAsTemplate(name, icon);
+        if (tpl) {
+          this.showToast(`已建立一日模板「${tpl.name}」！`);
+          this.saveDayTemplatePanel.hidden = true;
+          this.renderDayTemplatesList();
+        } else {
+          this.showToast('建立失敗：今日無排程');
+        }
+      });
+
+      this.dayTemplateListEl?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-day-tpl-action]');
+        if (!btn) return;
+        const action = btn.dataset.dayTplAction;
+        const tplId = btn.dataset.tplId;
+        const tpl = TF.store.getDayTemplateById(tplId);
+        if (!tpl) return;
+
+        if (action === 'apply-replace') {
+          const count = TF.store.applyDayTemplate(tplId, { overwrite: true });
+          this.closeModal(this.dayTemplateModalEl);
+          this.showToast(`已套用模板「${tpl.name}」（覆蓋 ${count} 項活動）`, true);
+          TF.timeline.scrollToSmartPosition();
+        } else if (action === 'apply-append') {
+          const count = TF.store.applyDayTemplate(tplId, { overwrite: false });
+          this.closeModal(this.dayTemplateModalEl);
+          this.showToast(`已追加模板「${tpl.name}」（新增 ${count} 項活動）`, true);
+          TF.timeline.scrollToSmartPosition();
+        } else if (action === 'delete') {
+          if (confirm(`確定要刪除一日模板「${tpl.name}」嗎？`)) {
+            TF.store.deleteDayTemplate(tplId);
+            this.renderDayTemplatesList();
+            this.showToast('已刪除一日模板', true);
+          }
+        }
+      });
+
+      // Stats event delegation for Desktop & Mobile
+      [this.statsDesktopEl, this.statsModalBodyEl].forEach((container) => {
+        if (!container) return;
+
+        container.addEventListener('click', (e) => {
+          const tabBtn = e.target.closest('[data-stats-mode]');
+          if (tabBtn) {
+            TF.store.setStatsMode(tabBtn.dataset.statsMode);
+            return;
+          }
+
+          const chip = e.target.closest('[data-preset-start]');
+          if (chip) {
+            const start = Number(chip.dataset.presetStart);
+            const end = Number(chip.dataset.presetEnd);
+            TF.store.setDiscretionaryWindow(start, end);
+            return;
+          }
+        });
+
+        container.addEventListener('change', (e) => {
+          const sel = e.target.closest('.disc-select');
+          if (!sel) return;
+          const parent = sel.closest('.disc-time-inputs');
+          if (!parent) return;
+          const startSel = parent.querySelector('[data-disc="start"]');
+          const endSel = parent.querySelector('[data-disc="end"]');
+          if (startSel && endSel) {
+            let start = Number(startSel.value);
+            let end = Number(endSel.value);
+            if (end <= start) {
+              if (sel === startSel) end = Math.min(TF.utils.MINUTES_PER_DAY, start + 60);
+              else start = Math.max(0, end - 60);
+            }
+            TF.store.setDiscretionaryWindow(start, end);
+          }
+        });
+      });
     }
 
     async handleEmailAuth(mode) {
@@ -639,32 +781,143 @@
     renderStats() {
       const blocks = TF.store.getBlocks();
       const categories = TF.store.getCategories();
+      const settings = TF.store.state.settings;
+      const statsMode = settings.statsMode || 'daily';
 
-      const totalsByCat = new Map();
-      let totalMinutes = 0;
+      const discStart = settings.discretionaryStart ?? 1140; // 19:00
+      const discEnd = settings.discretionaryEnd ?? 1380; // 23:00
+      const discDuration = Math.max(SNAP_MINUTES, discEnd - discStart);
+
+      const totalsByCat24h = new Map();
+      const totalsByCatDisc = new Map();
+      let totalMins24h = 0;
+      let totalMinsDisc = 0;
 
       for (const b of blocks) {
-        totalMinutes += b.durationMinutes;
-        totalsByCat.set(b.categoryId, (totalsByCat.get(b.categoryId) || 0) + b.durationMinutes);
+        totalMins24h += b.durationMinutes;
+        totalsByCat24h.set(b.categoryId, (totalsByCat24h.get(b.categoryId) || 0) + b.durationMinutes);
+
+        // Discretionary intersection
+        const bStart = b.startMinutes;
+        const bEnd = b.startMinutes + b.durationMinutes;
+        const overlap = Math.max(0, Math.min(bEnd, discEnd) - Math.max(bStart, discStart));
+        if (overlap > 0) {
+          totalMinsDisc += overlap;
+          totalsByCatDisc.set(b.categoryId, (totalsByCatDisc.get(b.categoryId) || 0) + overlap);
+        }
       }
 
-      const unscheduledMinutes = Math.max(0, MINUTES_PER_DAY - totalMinutes);
-      const breakdown = categories
-        .map((cat) => ({
-          cat,
-          minutes: totalsByCat.get(cat.id) || 0
-        }))
-        .filter((item) => item.minutes > 0)
-        .sort((a, b) => b.minutes - a.minutes);
+      const tabsHtml = `
+        <div class="stats-mode-tabs" role="tablist">
+          <button type="button" class="stats-tab-btn ${statsMode === 'daily' ? 'is-active' : ''}" data-stats-mode="daily">全天（24 小時）</button>
+          <button type="button" class="stats-tab-btn ${statsMode === 'discretionary' ? 'is-active' : ''}" data-stats-mode="discretionary">可支配時間</button>
+        </div>
+      `;
 
-      const barSegments = breakdown.map((item) => {
-        const pct = Math.min(100, (item.minutes / MINUTES_PER_DAY) * 100);
-        return `<div class="stats-bar-seg" style="width:${pct.toFixed(2)}%; background:${item.cat.color}" title="${escapeHtml(item.cat.name)}: ${formatDuration(item.minutes)}"></div>`;
-      }).join('');
+      let bodyHtml = '';
 
-      const listRows = breakdown.length
-        ? breakdown.map((item) => {
-            const pctOfDay = Math.round((item.minutes / MINUTES_PER_DAY) * 100);
+      if (statsMode === 'daily') {
+        const unscheduledMinutes = Math.max(0, MINUTES_PER_DAY - totalMins24h);
+        const breakdown = categories
+          .map((cat) => ({
+            cat,
+            minutes: totalsByCat24h.get(cat.id) || 0
+          }))
+          .filter((item) => item.minutes > 0)
+          .sort((a, b) => b.minutes - a.minutes);
+
+        const barSegments = breakdown.map((item) => {
+          const pct = Math.min(100, (item.minutes / MINUTES_PER_DAY) * 100);
+          return `<div class="stats-bar-seg" style="width:${pct.toFixed(2)}%; background:${item.cat.color}" title="${escapeHtml(item.cat.name)}: ${formatDuration(item.minutes)}"></div>`;
+        }).join('');
+
+        const listRows = breakdown.length
+          ? breakdown.map((item) => {
+              const pctOfDay = Math.round((item.minutes / MINUTES_PER_DAY) * 100);
+              return `
+                <div class="stats-row">
+                  <div class="stats-row-left">
+                    <span class="cat-dot" style="background:${item.cat.color}"></span>
+                    <span class="stats-cat-icon">${escapeHtml(item.cat.icon || '')}</span>
+                    <span class="stats-cat-name">${escapeHtml(item.cat.name)}</span>
+                  </div>
+                  <div class="stats-row-right">
+                    <span class="stats-hrs">${formatHoursDecimal(item.minutes)}</span>
+                    <span class="stats-pct">${pctOfDay}%</span>
+                  </div>
+                </div>
+              `;
+            }).join('')
+          : `<div class="empty-state">今日全天尚未安排任何活動方塊</div>`;
+
+        bodyHtml = `
+          <div class="stats-summary-cards">
+            <div class="stats-metric">
+              <span class="stats-metric-label">已排程</span>
+              <span class="stats-metric-val">${formatHoursDecimal(totalMins24h)}</span>
+            </div>
+            <div class="stats-metric">
+              <span class="stats-metric-label">剩餘可用</span>
+              <span class="stats-metric-val is-muted">${formatHoursDecimal(unscheduledMinutes)}</span>
+            </div>
+          </div>
+          <div class="stats-bar-track" aria-label="24 小時分配比例">
+            ${barSegments}
+          </div>
+          <div class="stats-list">
+            ${listRows}
+          </div>
+        `;
+      } else {
+        const freeDiscMins = Math.max(0, discDuration - totalMinsDisc);
+
+        const startOptions = [];
+        for (let m = 0; m < MINUTES_PER_DAY; m += 30) {
+          startOptions.push(`<option value="${m}" ${m === discStart ? 'selected' : ''}>${formatTime(m)}</option>`);
+        }
+        const endOptions = [];
+        for (let m = 30; m <= MINUTES_PER_DAY; m += 30) {
+          endOptions.push(`<option value="${m}" ${m === discEnd ? 'selected' : ''}>${formatTime(m)}</option>`);
+        }
+
+        const presets = [
+          { label: '晚間 19:00-23:00', start: 1140, end: 1380 },
+          { label: '晨間 06:00-09:00', start: 360, end: 540 },
+          { label: '午後 13:00-18:00', start: 780, end: 1080 },
+          { label: '白日 09:00-18:00', start: 540, end: 1080 },
+          { label: '全日 08:00-24:00', start: 480, end: 1440 }
+        ];
+
+        const presetChipsHtml = presets.map((p) => {
+          const isActive = p.start === discStart && p.end === discEnd;
+          return `
+            <button type="button" class="disc-chip ${isActive ? 'is-active' : ''}" data-preset-start="${p.start}" data-preset-end="${p.end}">
+              ${escapeHtml(p.label)}
+            </button>
+          `;
+        }).join('');
+
+        const breakdown = categories
+          .map((cat) => ({
+            cat,
+            minutes: totalsByCatDisc.get(cat.id) || 0
+          }))
+          .filter((item) => item.minutes > 0)
+          .sort((a, b) => b.minutes - a.minutes);
+
+        const barSegments = [
+          ...breakdown.map((item) => {
+            const pct = (item.minutes / discDuration) * 100;
+            return `<div class="stats-bar-seg" style="width:${pct.toFixed(2)}%; background:${item.cat.color}" title="${escapeHtml(item.cat.name)}: ${formatDuration(item.minutes)}"></div>`;
+          }),
+          freeDiscMins > 0
+            ? `<div class="stats-bar-seg is-free-seg" style="width:${((freeDiscMins / discDuration) * 100).toFixed(2)}%" title="剩餘自由時間: ${formatDuration(freeDiscMins)}"></div>`
+            : ''
+        ].join('');
+
+        const listRows = [
+          ...breakdown.map((item) => {
+            const pctOfWindow = Math.round((item.minutes / discDuration) * 100);
             return `
               <div class="stats-row">
                 <div class="stats-row-left">
@@ -674,34 +927,58 @@
                 </div>
                 <div class="stats-row-right">
                   <span class="stats-hrs">${formatHoursDecimal(item.minutes)}</span>
-                  <span class="stats-pct">${pctOfDay}%</span>
+                  <span class="stats-pct">${pctOfWindow}%</span>
                 </div>
               </div>
             `;
-          }).join('')
-        : `<div class="empty-state">今日尚未安排任何活動方塊</div>`;
+          }),
+          `<div class="stats-row">
+            <div class="stats-row-left">
+              <span class="cat-dot" style="background:#10B981"></span>
+              <span class="stats-cat-icon">🌱</span>
+              <span class="stats-cat-name" style="font-weight:700; color:#10B981;">完全自由時間</span>
+            </div>
+            <div class="stats-row-right">
+              <span class="stats-hrs" style="color:#10B981;">${formatHoursDecimal(freeDiscMins)}</span>
+              <span class="stats-pct">${Math.round((freeDiscMins / discDuration) * 100)}%</span>
+            </div>
+          </div>`
+        ].join('');
 
-      const html = `
-        <div class="stats-summary-cards">
-          <div class="stats-metric">
-            <span class="stats-metric-label">已排程</span>
-            <span class="stats-metric-val">${formatHoursDecimal(totalMinutes)}</span>
+        bodyHtml = `
+          <div class="disc-controls">
+            <div class="disc-time-inputs">
+              <select class="disc-select" data-disc="start">${startOptions.join('')}</select>
+              <span class="disc-to-label">至</span>
+              <select class="disc-select" data-disc="end">${endOptions.join('')}</select>
+            </div>
+            <div class="disc-presets-row">
+              ${presetChipsHtml}
+            </div>
           </div>
-          <div class="stats-metric">
-            <span class="stats-metric-label">剩餘可用</span>
-            <span class="stats-metric-val is-muted">${formatHoursDecimal(unscheduledMinutes)}</span>
-          </div>
-        </div>
-        <div class="stats-bar-track" aria-label="24 小時分配比例">
-          ${barSegments}
-        </div>
-        <div class="stats-list">
-          ${listRows}
-        </div>
-      `;
 
-      this.statsDesktopEl.innerHTML = html;
-      this.statsModalBodyEl.innerHTML = html;
+          <div class="stats-summary-cards">
+            <div class="stats-metric">
+              <span class="stats-metric-label">時段總長</span>
+              <span class="stats-metric-val is-muted">${formatHoursDecimal(discDuration)}</span>
+            </div>
+            <div class="stats-metric">
+              <span class="stats-metric-label">自由可用</span>
+              <span class="stats-metric-val is-free">${formatHoursDecimal(freeDiscMins)}</span>
+            </div>
+          </div>
+          <div class="stats-bar-track" aria-label="可支配時間分配比例">
+            ${barSegments}
+          </div>
+          <div class="stats-list">
+            ${listRows}
+          </div>
+        `;
+      }
+
+      const fullHtml = tabsHtml + bodyHtml;
+      this.statsDesktopEl.innerHTML = fullHtml;
+      this.statsModalBodyEl.innerHTML = fullHtml;
     }
 
     // --- Modals ---
@@ -720,7 +997,15 @@
     }
 
     closeAllModals() {
-      [this.blockModalEl, this.categoryModalEl, this.templateModalEl, this.statsModalEl, this.syncModalEl].forEach((m) => this.closeModal(m));
+      [
+        this.blockModalEl,
+        this.categoryModalEl,
+        this.templateModalEl,
+        this.statsModalEl,
+        this.syncModalEl,
+        this.calendarModalEl,
+        this.dayTemplateModalEl
+      ].forEach((m) => this.closeModal(m));
       this.closeMobileDrawer();
     }
 
@@ -840,6 +1125,142 @@
       this.openModal(this.statsModalEl);
     }
 
+    // --- Calendar Month Picker Modal ---
+    openCalendarModal() {
+      const parsed = TF.utils.parseDateKey(TF.store.selectedDate);
+      this.calYear = parsed.getFullYear();
+      this.calMonth = parsed.getMonth();
+      this.renderCalendarMonth();
+      this.openModal(this.calendarModalEl);
+    }
+
+    shiftCalendarMonth(delta) {
+      this.calMonth += delta;
+      if (this.calMonth < 0) {
+        this.calMonth = 11;
+        this.calYear -= 1;
+      } else if (this.calMonth > 11) {
+        this.calMonth = 0;
+        this.calYear += 1;
+      }
+      this.renderCalendarMonth();
+    }
+
+    renderCalendarMonth() {
+      if (!this.calendarGridDays || !this.calendarModalMonthLabel) return;
+      this.calendarModalMonthLabel.textContent = `${this.calYear} 年 ${this.calMonth + 1} 月`;
+
+      const firstDayOfMonth = new Date(this.calYear, this.calMonth, 1).getDay();
+      const daysInMonth = new Date(this.calYear, this.calMonth + 1, 0).getDate();
+      const daysInPrevMonth = new Date(this.calYear, this.calMonth, 0).getDate();
+
+      const todayKey = TF.utils.toDateKey(new Date());
+      const selectedKey = TF.store.selectedDate;
+
+      const cells = [];
+
+      // Prev month trailing days
+      for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+        const d = daysInPrevMonth - i;
+        const prevMonth = this.calMonth === 0 ? 11 : this.calMonth - 1;
+        const prevYear = this.calMonth === 0 ? this.calYear - 1 : this.calYear;
+        const dKey = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const hasEvents = TF.store.hasEventsOnDate(dKey);
+        cells.push(`
+          <button type="button" class="cal-day-cell is-other-month ${dKey === selectedKey ? 'is-selected' : ''}" data-cal-date="${dKey}">
+            <span class="cal-day-num">${d}</span>
+            ${hasEvents ? '<span class="cal-event-dot"></span>' : ''}
+          </button>
+        `);
+      }
+
+      // Current month days
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dKey = `${this.calYear}-${String(this.calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isToday = dKey === todayKey;
+        const isSelected = dKey === selectedKey;
+        const hasEvents = TF.store.hasEventsOnDate(dKey);
+
+        const classes = ['cal-day-cell'];
+        if (isToday) classes.push('is-today');
+        if (isSelected) classes.push('is-selected');
+
+        cells.push(`
+          <button type="button" class="${classes.join(' ')}" data-cal-date="${dKey}">
+            <span class="cal-day-num">${d}</span>
+            ${hasEvents ? '<span class="cal-event-dot"></span>' : ''}
+          </button>
+        `);
+      }
+
+      // Next month leading days (up to 35 or 42 cells)
+      const totalCells = cells.length;
+      const needed = totalCells <= 35 ? 35 - totalCells : 42 - totalCells;
+      for (let d = 1; d <= needed; d++) {
+        const nextMonth = this.calMonth === 11 ? 0 : this.calMonth + 1;
+        const nextYear = this.calMonth === 11 ? this.calYear + 1 : this.calYear;
+        const dKey = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const hasEvents = TF.store.hasEventsOnDate(dKey);
+        cells.push(`
+          <button type="button" class="cal-day-cell is-other-month ${dKey === selectedKey ? 'is-selected' : ''}" data-cal-date="${dKey}">
+            <span class="cal-day-num">${d}</span>
+            ${hasEvents ? '<span class="cal-event-dot"></span>' : ''}
+          </button>
+        `);
+      }
+
+      this.calendarGridDays.innerHTML = cells.join('');
+    }
+
+    // --- Day Templates Modal ---
+    openDayTemplateModal() {
+      if (this.saveDayTemplatePanel) this.saveDayTemplatePanel.hidden = true;
+      this.renderDayTemplatesList();
+      this.openModal(this.dayTemplateModalEl);
+    }
+
+    renderDayTemplatesList() {
+      if (!this.dayTemplateListEl) return;
+      const templates = TF.store.getDayTemplates();
+
+      if (!templates || templates.length === 0) {
+        this.dayTemplateListEl.innerHTML = `
+          <div class="empty-state">尚無一日活動模板，點擊上方「＋ 將今日儲存為模板」</div>
+        `;
+        return;
+      }
+
+      this.dayTemplateListEl.innerHTML = templates.map((tpl) => {
+        const blockChips = (tpl.blocks || []).map((b) => {
+          const cat = TF.store.getCategoryById(b.categoryId);
+          const time = TF.utils.formatTime(b.startMinutes);
+          return `
+            <span class="day-tpl-mini-chip" style="--chip-color:${cat.color}; --chip-bg:${TF.utils.hexToRgba(cat.color, 0.12)}; --chip-border:${TF.utils.hexToRgba(cat.color, 0.35)}">
+              ${escapeHtml(cat.icon || '')} ${time} ${escapeHtml(b.title)}
+            </span>
+          `;
+        }).join('');
+
+        const isBuiltin = tpl.id.startsWith('dtpl_workday') || tpl.id.startsWith('dtpl_weekend');
+
+        return `
+          <div class="day-tpl-card">
+            <div class="day-tpl-card-header">
+              <span class="day-tpl-card-title">${escapeHtml(tpl.icon || '📅')} ${escapeHtml(tpl.name)}</span>
+              <span class="badge-sm">${(tpl.blocks || []).length} 項安排</span>
+            </div>
+            <div class="day-tpl-card-desc">${escapeHtml(tpl.description || '')}</div>
+            <div class="day-tpl-chips-preview">${blockChips}</div>
+            <div class="day-tpl-card-actions">
+              ${!isBuiltin ? `<button type="button" class="btn-ghost-sm is-danger" data-day-tpl-action="delete" data-tpl-id="${tpl.id}">刪除</button>` : ''}
+              <button type="button" class="btn-sm-secondary" data-day-tpl-action="apply-append" data-tpl-id="${tpl.id}" title="保留今日既有活動，追加模板內的項目">追加排程</button>
+              <button type="button" class="btn-sm-primary" data-day-tpl-action="apply-replace" data-tpl-id="${tpl.id}" title="清空今日現有活動，直接套用模板">覆蓋套用</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
     openMobileDrawer() {
       this.mobileDrawerEl.classList.add('is-open');
       this.mobileDrawerBackdropEl.hidden = false;
@@ -862,7 +1283,9 @@
     syncZoomButtons() {
       const cur = TF.store.state.settings.hourHeight || 64;
       document.querySelectorAll('[data-zoom]').forEach((btn) => {
-        btn.classList.toggle('is-active', Number(btn.dataset.zoom) === cur);
+        const val = btn.dataset.zoom;
+        const active = (val === 'fit' && cur === 'fit') || (val !== 'fit' && Number(val) === Number(cur));
+        btn.classList.toggle('is-active', active);
       });
     }
 
