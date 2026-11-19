@@ -123,8 +123,15 @@
       this.btnSaveCurrentAsDayTemplate = document.getElementById('btnSaveCurrentAsDayTemplate');
       this.saveDayTemplatePanel = document.getElementById('saveDayTemplatePanel');
       this.saveDayTemplateForm = document.getElementById('saveDayTemplateForm');
+      this.dayTplFormTitle = document.getElementById('dayTplFormTitle');
+      this.editingDayTplId = document.getElementById('editingDayTplId');
       this.newDayTplName = document.getElementById('newDayTplName');
       this.newDayTplIcon = document.getElementById('newDayTplIcon');
+      this.newDayTplDesc = document.getElementById('newDayTplDesc');
+      this.groupUpdateBlocksFromCurrent = document.getElementById('groupUpdateBlocksFromCurrent');
+      this.checkUpdateBlocksFromCurrent = document.getElementById('checkUpdateBlocksFromCurrent');
+      this.labelUpdateBlocksFromCurrent = document.getElementById('labelUpdateBlocksFromCurrent');
+      this.btnSubmitDayTemplate = document.getElementById('btnSubmitDayTemplate');
       this.btnCancelSaveDayTemplate = document.getElementById('btnCancelSaveDayTemplate');
     }
 
@@ -324,9 +331,13 @@
 
       this.btnDeleteTemplateModal.addEventListener('click', () => {
         if (!this.editingTemplateId) return;
-        TF.store.deleteTemplate(this.editingTemplateId);
-        this.closeModal(this.templateModalEl);
-        this.showToast('已刪除活動方塊模板', true);
+        const tpl = TF.store.getTemplateById(this.editingTemplateId);
+        const name = tpl ? `「${tpl.title}」` : '';
+        if (confirm(`確定要刪除活動方塊模板${name}嗎？此操作無法復原。`)) {
+          TF.store.deleteTemplate(this.editingTemplateId);
+          this.closeModal(this.templateModalEl);
+          this.showToast('已刪除活動方塊模板', true);
+        }
       });
 
       // Mobile drawer open/close
@@ -449,8 +460,14 @@
           this.showToast('今日尚無任何活動方塊可儲存為模板');
           return;
         }
+        if (this.editingDayTplId) this.editingDayTplId.value = '';
+        if (this.dayTplFormTitle) this.dayTplFormTitle.textContent = '建立新模板（以今日排程為基底）';
+        if (this.btnSubmitDayTemplate) this.btnSubmitDayTemplate.textContent = '儲存為新模板';
+        if (this.newDayTplName) this.newDayTplName.value = '';
+        if (this.newDayTplIcon) this.newDayTplIcon.value = '📅';
+        if (this.newDayTplDesc) this.newDayTplDesc.value = '';
+        if (this.groupUpdateBlocksFromCurrent) this.groupUpdateBlocksFromCurrent.hidden = true;
         this.saveDayTemplatePanel.hidden = false;
-        this.newDayTplName.value = '';
         this.newDayTplName.focus();
       });
 
@@ -460,16 +477,37 @@
 
       this.saveDayTemplateForm?.addEventListener('submit', (e) => {
         e.preventDefault();
+        const editingId = this.editingDayTplId ? this.editingDayTplId.value : '';
         const name = this.newDayTplName.value.trim();
         if (!name) return;
         const icon = this.newDayTplIcon.value.trim() || '📅';
-        const tpl = TF.store.saveCurrentDayAsTemplate(name, icon);
-        if (tpl) {
-          this.showToast(`已建立一日模板「${tpl.name}」！`);
-          this.saveDayTemplatePanel.hidden = true;
-          this.renderDayTemplatesList();
+        const desc = this.newDayTplDesc ? this.newDayTplDesc.value.trim() : '';
+
+        if (editingId) {
+          const updateBlocks = this.checkUpdateBlocksFromCurrent ? this.checkUpdateBlocksFromCurrent.checked : false;
+          const updated = TF.store.updateDayTemplate(editingId, {
+            name,
+            icon,
+            description: desc,
+            updateBlocksFromCurrentDate: updateBlocks
+          });
+          if (updated) {
+            this.showToast(`已更新一日模板「${updated.name}」！`, true);
+            this.saveDayTemplatePanel.hidden = true;
+            this.renderDayTemplatesList();
+          } else {
+            this.showToast('更新失敗：找不到該模板');
+          }
         } else {
-          this.showToast('建立失敗：今日無排程');
+          const tpl = TF.store.saveCurrentDayAsTemplate(name, icon);
+          if (tpl) {
+            if (desc) TF.store.updateDayTemplate(tpl.id, { description: desc });
+            this.showToast(`已建立一日模板「${tpl.name}」！`, true);
+            this.saveDayTemplatePanel.hidden = true;
+            this.renderDayTemplatesList();
+          } else {
+            this.showToast('建立失敗：今日無排程');
+          }
         }
       });
 
@@ -481,7 +519,29 @@
         const tpl = TF.store.getDayTemplateById(tplId);
         if (!tpl) return;
 
-        if (action === 'apply-replace') {
+        if (action === 'edit') {
+          if (this.editingDayTplId) this.editingDayTplId.value = tpl.id;
+          if (this.dayTplFormTitle) this.dayTplFormTitle.textContent = `編輯一日模板：${tpl.name}`;
+          if (this.btnSubmitDayTemplate) this.btnSubmitDayTemplate.textContent = '儲存修改';
+          if (this.newDayTplName) this.newDayTplName.value = tpl.name;
+          if (this.newDayTplIcon) this.newDayTplIcon.value = tpl.icon || '📅';
+          if (this.newDayTplDesc) this.newDayTplDesc.value = tpl.description || '';
+
+          const currentBlocks = TF.store.getBlocks();
+          if (this.groupUpdateBlocksFromCurrent && this.checkUpdateBlocksFromCurrent && this.labelUpdateBlocksFromCurrent) {
+            this.checkUpdateBlocksFromCurrent.checked = false;
+            if (currentBlocks && currentBlocks.length > 0) {
+              this.labelUpdateBlocksFromCurrent.textContent = `🔄 同步以今日排程覆蓋更新此模板活動（今日有 ${currentBlocks.length} 項活動）`;
+              this.groupUpdateBlocksFromCurrent.hidden = false;
+            } else {
+              this.groupUpdateBlocksFromCurrent.hidden = true;
+            }
+          }
+
+          this.saveDayTemplatePanel.hidden = false;
+          this.saveDayTemplatePanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          this.newDayTplName.focus();
+        } else if (action === 'apply-replace') {
           const count = TF.store.applyDayTemplate(tplId, { overwrite: true });
           this.closeModal(this.dayTemplateModalEl);
           this.showToast(`已套用模板「${tpl.name}」（覆蓋 ${count} 項活動）`, true);
@@ -492,7 +552,7 @@
           this.showToast(`已追加模板「${tpl.name}」（新增 ${count} 項活動）`, true);
           TF.timeline.scrollToSmartPosition();
         } else if (action === 'delete') {
-          if (confirm(`確定要刪除一日模板「${tpl.name}」嗎？`)) {
+          if (confirm(`確定要刪除一日模板「${tpl.name}」嗎？此操作無法復原。`)) {
             TF.store.deleteDayTemplate(tplId);
             this.renderDayTemplatesList();
             this.showToast('已刪除一日模板', true);
@@ -1363,14 +1423,22 @@
           <div class="day-tpl-card">
             <div class="day-tpl-card-header">
               <span class="day-tpl-card-title">${escapeHtml(tpl.icon || '📅')} ${escapeHtml(tpl.name)}</span>
-              <span class="badge-sm">${(tpl.blocks || []).length} 項安排</span>
+              <div class="day-tpl-badges" style="display:flex; align-items:center; gap:6px;">
+                ${isBuiltin ? `<span class="badge-sm is-muted" style="opacity:0.75;">預設</span>` : ''}
+                <span class="badge-sm">${(tpl.blocks || []).length} 項安排</span>
+              </div>
             </div>
             <div class="day-tpl-card-desc">${escapeHtml(tpl.description || '')}</div>
             <div class="day-tpl-chips-preview">${blockChips}</div>
             <div class="day-tpl-card-actions">
-              ${!isBuiltin ? `<button type="button" class="btn-ghost-sm is-danger" data-day-tpl-action="delete" data-tpl-id="${tpl.id}">刪除</button>` : ''}
-              <button type="button" class="btn-sm-secondary" data-day-tpl-action="apply-append" data-tpl-id="${tpl.id}" title="保留今日既有活動，追加模板內的項目">追加排程</button>
-              <button type="button" class="btn-sm-primary" data-day-tpl-action="apply-replace" data-tpl-id="${tpl.id}" title="清空今日現有活動，直接套用模板">覆蓋套用</button>
+              <div class="day-tpl-actions-left">
+                <button type="button" class="btn-ghost-sm is-danger" data-day-tpl-action="delete" data-tpl-id="${tpl.id}" title="刪除此模板（包含預設模板）">刪除</button>
+                <button type="button" class="btn-ghost-sm" data-day-tpl-action="edit" data-tpl-id="${tpl.id}" title="編輯模板名稱、圖示或更新排程內容">✏️ 編輯</button>
+              </div>
+              <div class="day-tpl-actions-right">
+                <button type="button" class="btn-sm-secondary" data-day-tpl-action="apply-append" data-tpl-id="${tpl.id}" title="保留今日既有活動，追加模板內的項目">追加排程</button>
+                <button type="button" class="btn-sm-primary" data-day-tpl-action="apply-replace" data-tpl-id="${tpl.id}" title="清空今日現有活動，直接套用模板">覆蓋套用</button>
+              </div>
             </div>
           </div>
         `;

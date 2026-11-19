@@ -2546,8 +2546,39 @@ button {
 .day-tpl-card-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-color);
+}
+
+.day-tpl-actions-left,
+.day-tpl-actions-right {
+  display: flex;
+  align-items: center;
   gap: 6px;
+}
+
+@media (max-width: 480px) {
+  .day-tpl-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .day-tpl-actions-left,
+  .day-tpl-actions-right {
+    display: flex;
+    width: 100%;
+    gap: 6px;
+  }
+  .day-tpl-actions-left button,
+  .day-tpl-actions-right button {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
 }
 
 /* ==================== Responsive & Aesthetic Fine-Tuning ==================== */

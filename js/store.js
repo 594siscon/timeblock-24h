@@ -145,7 +145,7 @@
             return {
               categories: parsed.categories,
               templates: parsed.templates,
-              dayTemplates: Array.isArray(parsed.dayTemplates) && parsed.dayTemplates.length > 0
+              dayTemplates: Array.isArray(parsed.dayTemplates)
                 ? parsed.dayTemplates
                 : DEFAULT_DAY_TEMPLATES.map((dt) => ({ ...dt })),
               blocksByDate: parsed.blocksByDate || {},
@@ -460,6 +460,48 @@
       this.state.dayTemplates = this.getDayTemplates().filter((t) => t.id !== id);
       this.notify('dayTemplates');
       return true;
+    },
+
+    updateDayTemplate(id, { name, icon, description, updateBlocksFromCurrentDate = false } = {}) {
+      const list = this.getDayTemplates();
+      const idx = list.findIndex((t) => t.id === id);
+      if (idx === -1) return null;
+
+      this.pushUndo(編輯一日模板「」);
+      const target = { ...list[idx] };
+
+      if (name !== undefined && name.trim()) {
+        target.name = name.trim();
+      }
+      if (icon !== undefined) {
+        target.icon = icon.trim() || '📅';
+      }
+      if (description !== undefined) {
+        target.description = description.trim();
+      }
+
+      if (updateBlocksFromCurrentDate) {
+        const currentBlocks = this.getBlocks(this.selectedDate);
+        if (currentBlocks && currentBlocks.length > 0) {
+          const cleanBlocks = currentBlocks
+            .map((b) => ({
+              title: b.title,
+              categoryId: b.categoryId,
+              startMinutes: b.startMinutes,
+              durationMinutes: b.durationMinutes,
+              note: b.note || ''
+            }))
+            .sort((a, b) => a.startMinutes - b.startMinutes);
+          target.blocks = cleanBlocks;
+          if (!description) {
+            target.description = 包含  項活動安排;
+          }
+        }
+      }
+
+      this.state.dayTemplates[idx] = target;
+      this.notify('dayTemplates');
+      return target;
     }
 
     // --- Time Blocks ---

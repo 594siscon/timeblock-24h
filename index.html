@@ -470,8 +470,9 @@
         </div>
 
         <div id="saveDayTemplatePanel" class="save-day-tpl-panel" hidden>
-          <h4 class="save-day-tpl-title">建立新模板（以當前排程為基底）</h4>
+          <h4 class="save-day-tpl-title" id="dayTplFormTitle">建立新模板（以當前排程為基底）</h4>
           <form id="saveDayTemplateForm" class="save-day-tpl-form">
+            <input type="hidden" id="editingDayTplId" value="" />
             <div class="form-row-cat">
               <div class="form-group flex-1">
                 <label class="form-label" for="newDayTplName">模板名稱</label>
@@ -482,9 +483,19 @@
                 <input type="text" id="newDayTplIcon" class="form-input text-center" maxlength="4" value="📅" />
               </div>
             </div>
+            <div class="form-group">
+              <label class="form-label" for="newDayTplDesc">模板說明（選填）</label>
+              <input type="text" id="newDayTplDesc" class="form-input" placeholder="簡短描述此一日排程特色..." />
+            </div>
+            <div class="form-group" id="groupUpdateBlocksFromCurrent" hidden>
+              <label class="form-checkbox-label" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12.5px; color:var(--text-secondary);">
+                <input type="checkbox" id="checkUpdateBlocksFromCurrent" />
+                <span id="labelUpdateBlocksFromCurrent">🔄 同步以今日排程覆蓋更新此模板活動</span>
+              </label>
+            </div>
             <div class="modal-footer">
               <button type="button" class="btn-secondary" id="btnCancelSaveDayTemplate">取消</button>
-              <button type="submit" class="btn-primary">儲存為新模板</button>
+              <button type="submit" class="btn-primary" id="btnSubmitDayTemplate">儲存為新模板</button>
             </div>
           </form>
           <hr class="modal-divider" />
