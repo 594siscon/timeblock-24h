@@ -1592,21 +1592,42 @@
       if (!this.versionChangelogListEl) return;
       const history = TF.VERSION_HISTORY || [];
 
-      this.versionChangelogListEl.innerHTML = history.map((item) => `
-        <div class="changelog-card ${item.isCurrent ? 'is-current' : ''}">
-          <div class="changelog-card-header">
-            <div class="changelog-ver-group">
-              <span class="changelog-ver-code">${escapeHtml(item.version)}</span>
-              <span class="changelog-ver-tag ${item.isCurrent ? 'is-current-tag' : ''}">${escapeHtml(item.tag)}</span>
+      this.versionChangelogListEl.innerHTML = history.map((item) => {
+        const filesHtml = Array.isArray(item.files) && item.files.length > 0
+          ? `<div class="changelog-files-row">
+               <span class="changelog-code-label">📁 變更檔案：</span>
+               ${item.files.map((f) => `<code class="changelog-file-pill">${escapeHtml(f)}</code>`).join('')}
+             </div>`
+          : '';
+
+        const codeDetailsHtml = Array.isArray(item.codeDetails) && item.codeDetails.length > 0
+          ? `<details class="changelog-code-details" ${item.isCurrent ? 'open' : ''}>
+               <summary class="changelog-code-summary">💻 代碼與架構層級變更明細（Commit: <code>${escapeHtml(item.commit || 'HEAD')}</code>）</summary>
+               ${filesHtml}
+               <ul class="changelog-code-list">
+                 ${item.codeDetails.map((cd) => `<li>${escapeHtml(cd)}</li>`).join('')}
+               </ul>
+             </details>`
+          : '';
+
+        return `
+          <div class="changelog-card ${item.isCurrent ? 'is-current' : ''}">
+            <div class="changelog-card-header">
+              <div class="changelog-ver-group">
+                <span class="changelog-ver-code">${escapeHtml(item.version)}</span>
+                <span class="changelog-ver-tag ${item.isCurrent ? 'is-current-tag' : ''}">${escapeHtml(item.tag)}</span>
+                ${item.commit ? `<code class="changelog-commit-hash" title="Git Commit Hash">#${escapeHtml(item.commit)}</code>` : ''}
+              </div>
+              <span class="changelog-ver-date">${escapeHtml(item.date)}</span>
             </div>
-            <span class="changelog-ver-date">${escapeHtml(item.date)}</span>
+            <div class="changelog-ver-title">${escapeHtml(item.title)}</div>
+            <ul class="changelog-list">
+              ${(item.changes || []).map((ch) => `<li>${escapeHtml(ch)}</li>`).join('')}
+            </ul>
+            ${codeDetailsHtml}
           </div>
-          <div class="changelog-ver-title">${escapeHtml(item.title)}</div>
-          <ul class="changelog-list">
-            ${(item.changes || []).map((ch) => `<li>${escapeHtml(ch)}</li>`).join('')}
-          </ul>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     // --- Theme, Zoom & Toast ---

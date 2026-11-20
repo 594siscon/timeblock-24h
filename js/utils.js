@@ -13,11 +13,12 @@
   const WEEKDAYS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
 
   /**
-   * 詳細版本更新紀錄（Changelog）
+   * 詳細版本更新紀錄（包含功能更新與代碼層級 Commit / 檔案 / 函式變更明細）
    */
   const VERSION_HISTORY = [
     {
       version: 'v2.1.0',
+      commit: 'fe2ccd1',
       date: '2026-11-20',
       tag: '最新正式版',
       isCurrent: true,
@@ -27,10 +28,18 @@
         '可支配時間升級支援「複數段時間」自由組合（可新增、修改、刪除多段時段並自動合併重疊區間），移除舊有預設按鈕晶片',
         '刪除作用重複的「選日期」按鈕，統一由頂部日期導覽列開啟日曆，畫面更純粹',
         '全面整理與美化電腦版三欄與手機版底部 Dock 排版、字距與卡片視覺層次'
+      ],
+      files: ['js/utils.js', 'js/store.js', 'js/timeline.js', 'js/ui.js', 'js/app.js', 'index.html', 'css/styles.css', 'CHANGELOG.md'],
+      codeDetails: [
+        'Store 狀態擴充：新增 editingDayTemplate 執行期物件與 startEditingDayTemplate() / saveEditingDayTemplate() / cancelEditingDayTemplate()，將 getBlocks() / addBlock() / updateBlock() / deleteBlock() 自動路由至模板拖拽編輯模式',
+        'Schema 升級：settings.discretionaryWindows 改為 Array<{id, start, end}> 結構，新增 normalizeDiscretionaryWindows() 向下相容舊資料與 add/update/removeDiscretionaryWindow() 方法',
+        '演算法新增：於 js/utils.js 新增 mergeTimeIntervals(windows) 區間合併演算法，於 js/ui.js 新增 calcBlockDiscretionaryOverlap() 計算方塊與多段可支配時間的精確交集',
+        'DOM 與 UI 重構：於 index.html 新增 #templateEditorBanner 拖拽編輯工具列，移除重複的 [data-open-calendar] 快捷列按鈕與 #dayTplBlockModal 冗餘結構'
       ]
     },
     {
       version: 'v2.0.0',
+      commit: 'af3ab64',
       date: '2026-11-20',
       tag: '全新重構版',
       isCurrent: false,
@@ -41,10 +50,17 @@
         '新增「版本紀錄與系統資訊」專屬面板，詳細記錄歷代版本號與更新內容',
         '完整實作「日 / 週 / 月」三週期統計，區分「全天 24H」與「可支配時間」雙維度分析',
         '電腦版與手機版活動方塊庫全面支援「輕點即智慧排入時間表」與「拖曳放置」雙模式'
+      ],
+      files: ['index.html', 'css/styles.css', 'js/utils.js', 'js/store.js', 'js/timeline.js', 'js/dnd.js', 'js/ui.js', 'js/app.js', 'sw.js'],
+      codeDetails: [
+        '修復致命初始化中斷 Bug：同步 Store.selectedDate 與 Store.state.selectedDate，解決舊版 parseDateKey(undefined) 拋出 TypeError 導致後續 addEventListener 中斷的問題',
+        '獨立儲存空間：切換 STORAGE_KEY = "timeblock_24h_v2_data"，並於 index.html <head> 內嵌版本比對腳本自動清理舊版 Cache Storage',
+        '錯誤隔離架構：於 js/app.js 最優先註冊 document 全域 click 委派；於 js/ui.js 的 renderAll() 對所有子渲染函式加上獨立 try / catch 保護'
       ]
     },
     {
       version: 'v1.3.0 ~ v1.3.4',
+      commit: 'd5c95d2..ea30842',
       date: '2026-11-20',
       tag: '功能擴充與修補',
       isCurrent: false,
@@ -53,10 +69,16 @@
         '升級一日模板編輯介面，支援管理模板內的各個活動時段',
         '新增活動方塊點擊智慧排入（Smart Click-to-Add）功能',
         '調整行動版響應式標頭與底部 Dock 操作列排版'
+      ],
+      files: ['js/ui.js', 'js/dnd.js', 'css/styles.css'],
+      codeDetails: [
+        '於 js/ui.js 實作 quickAddTemplateToTimeline(templateId) 空檔搜尋與碰撞檢測演算法',
+        '於 js/dnd.js 區分觸控輕點（Tap）與長按拖曳（240ms longPressTimer）'
       ]
     },
     {
       version: 'v1.2.0 ~ v1.2.2',
+      commit: 'd481d06..7a4763c',
       date: '2026-11-20',
       tag: '品牌重塑與統計',
       isCurrent: false,
@@ -65,10 +87,16 @@
         '應用程式正式更名為「時間方塊（TimeBlock 24H）」',
         '於網頁右下角與側邊欄新增常駐版本號顯示徽章',
         '建立日、週、月時間分配統計圖表，支援預設模板編輯與刪除'
+      ],
+      files: ['js/utils.js', 'js/ui.js', 'index.html', 'css/styles.css'],
+      codeDetails: [
+        '於 js/utils.js 新增 APP_NAME、APP_VERSION、getWeekDates()、getMonthDates()',
+        '於 index.html 新增 #cornerVersionBadge 常駐版本顯示元件'
       ]
     },
     {
       version: 'v1.1.0',
+      commit: 'df7dbc8',
       date: '2026-11-19',
       tag: '功能更新',
       isCurrent: false,
@@ -77,10 +105,16 @@
         '新增一日活動模板庫（常規工作日、週末充電日），支援一鍵套入新的一天',
         '統計面板分為「全天 24 小時」與「可支配時間」',
         '新增手機與電腦共用的月份日曆選擇器，並支援時間軸「全覽（Fit 24H）」模式'
+      ],
+      files: ['js/store.js', 'js/timeline.js', 'js/ui.js'],
+      codeDetails: [
+        '於 js/store.js 新增 dayTemplates 狀態與 applyDayTemplate(id, { overwrite })',
+        '於 js/timeline.js 新增 getHourHeight() 對 "fit" 全覽模式的動態高度計算'
       ]
     },
     {
       version: 'v1.0.0',
+      commit: 'initial',
       date: '2026-11-18',
       tag: '初代發布',
       isCurrent: false,
@@ -89,6 +123,10 @@
         '建立 24 小時（15 分鐘刻度）視覺化時間軸與活動方塊拖曳排程',
         '支援自訂活動類別、色彩、圖示與常用活動方塊模板',
         '支援 JSON 備份匯出/匯入與 Firebase 跨裝置即時雲端同步'
+      ],
+      files: ['index.html', 'css/styles.css', 'js/utils.js', 'js/store.js', 'js/timeline.js', 'js/dnd.js', 'js/ui.js', 'js/sync.js', 'js/app.js'],
+      codeDetails: [
+        '建立 TimeFlow 全域命名空間、computeBlockLayout() 重疊方塊並排演算法與 CloudSyncManager 同步引擎'
       ]
     }
   ];
