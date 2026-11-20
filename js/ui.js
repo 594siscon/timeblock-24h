@@ -143,6 +143,21 @@
       this.statsModalTitleEl = document.getElementById('statsModalTitle');
       this.btnExpandStats = document.getElementById('btnExpandStats');
       this.btnOpenStatsModalDesktop = document.getElementById('btnOpenStatsModalDesktop');
+
+      // Day Template Item Block Modal (和平時編輯時間列表一模一樣的介面)
+      this.dayTplBlockModalEl = document.getElementById('dayTplBlockModal');
+      this.dayTplBlockModalTitle = document.getElementById('dayTplBlockModalTitle');
+      this.dayTplBlockForm = document.getElementById('dayTplBlockForm');
+      this.dayTplBlockTitleInput = document.getElementById('dayTplBlockTitleInput');
+      this.dayTplBlockCategoryPicker = document.getElementById('dayTplBlockCategoryPicker');
+      this.dayTplBlockStartSelect = document.getElementById('dayTplBlockStartSelect');
+      this.dayTplBlockEndSelect = document.getElementById('dayTplBlockEndSelect');
+      this.dayTplBlockDurationChips = document.getElementById('dayTplBlockDurationChips');
+      this.dayTplBlockNoteInput = document.getElementById('dayTplBlockNoteInput');
+      this.btnDeleteDayTplBlock = document.getElementById('btnDeleteDayTplBlock');
+      this.btnSaveDayTplBlock = document.getElementById('btnSaveDayTplBlock');
+      this.editingTplBlockIdx = null;
+      this.editingTplBlockCatId = null;
     }
 
     populateTimeOptions() {
@@ -151,12 +166,18 @@
         startOpts.push(`<option value="${m}">${formatTime(m)}</option>`);
       }
       this.blockStartSelect.innerHTML = startOpts.join('');
+      if (this.dayTplBlockStartSelect) {
+        this.dayTplBlockStartSelect.innerHTML = startOpts.join('');
+      }
 
       const endOpts = [];
       for (let m = SNAP_MINUTES; m <= MINUTES_PER_DAY; m += SNAP_MINUTES) {
         endOpts.push(`<option value="${m}">${formatTime(m)}</option>`);
       }
       this.blockEndSelect.innerHTML = endOpts.join('');
+      if (this.dayTplBlockEndSelect) {
+        this.dayTplBlockEndSelect.innerHTML = endOpts.join('');
+      }
 
       const durOpts = [15, 30, 45, 60, 75, 90, 120, 150, 180, 240];
       this.tplDurationSelect.innerHTML = durOpts
@@ -253,6 +274,89 @@
         TF.store.deleteBlock(this.editingBlockId);
         this.closeModal(this.blockModalEl);
         this.showToast('已刪除活動方塊', true);
+      });
+
+      // Day Template Item Block Modal events (和平時編輯時間列表方塊一模一樣的邏輯)
+      if (this.dayTplBlockStartSelect && this.dayTplBlockEndSelect) {
+        this.dayTplBlockStartSelect.addEventListener('change', () => {
+          const start = Number(this.dayTplBlockStartSelect.value);
+          const end = Number(this.dayTplBlockEndSelect.value);
+          if (end <= start) {
+            this.dayTplBlockEndSelect.value = String(Math.min(MINUTES_PER_DAY, start + DEFAULT_DURATION));
+          }
+          this.highlightActiveDayTplDurationChip();
+        });
+
+        this.dayTplBlockEndSelect.addEventListener('change', () => {
+          const start = Number(this.dayTplBlockStartSelect.value);
+          const end = Number(this.dayTplBlockEndSelect.value);
+          if (end <= start) {
+            this.dayTplBlockStartSelect.value = String(Math.max(0, end - SNAP_MINUTES));
+          }
+          this.highlightActiveDayTplDurationChip();
+        });
+      }
+
+      this.dayTplBlockDurationChips?.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-dur]');
+        if (!chip) return;
+        const dur = Number(chip.dataset.dur);
+        const start = Number(this.dayTplBlockStartSelect.value);
+        const end = Math.min(MINUTES_PER_DAY, start + dur);
+        this.dayTplBlockEndSelect.value = String(end);
+        this.highlightActiveDayTplDurationChip();
+      });
+
+      this.dayTplBlockCategoryPicker?.addEventListener('click', (e) => {
+        const pill = e.target.closest('[data-cat-id]');
+        if (!pill) return;
+        this.dayTplBlockCategoryPicker.querySelectorAll('.cat-pick-pill').forEach((p) => p.classList.remove('is-active'));
+        pill.classList.add('is-active');
+      });
+
+      this.dayTplBlockForm?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const title = this.dayTplBlockTitleInput.value.trim() || '未命名活動';
+        const activeCat = this.dayTplBlockCategoryPicker.querySelector('.cat-pick-pill.is-active');
+        const categoryId = activeCat ? activeCat.dataset.catId : TF.store.getCategories()[0]?.id;
+        const startMinutes = Number(this.dayTplBlockStartSelect.value);
+        const endMinutes = Number(this.dayTplBlockEndSelect.value);
+        const durationMinutes = Math.max(SNAP_MINUTES, endMinutes - startMinutes);
+        const note = this.dayTplBlockNoteInput.value.trim();
+
+        if (!Array.isArray(this.editingTemplateSchedule)) {
+          this.editingTemplateSchedule = [];
+        }
+
+        const itemData = {
+          title,
+          categoryId,
+          startMinutes,
+          durationMinutes,
+          note
+        };
+
+        if (this.editingTplBlockIdx !== null && this.editingTplBlockIdx >= 0) {
+          this.editingTemplateSchedule[this.editingTplBlockIdx] = itemData;
+          this.showToast(`已更新模板時段「${title}」`, true);
+        } else {
+          this.editingTemplateSchedule.push(itemData);
+          this.showToast(`已新增模板時段「${title}」`, true);
+        }
+
+        // 按開始時間排序
+        this.editingTemplateSchedule.sort((a, b) => a.startMinutes - b.startMinutes);
+        this.closeModal(this.dayTplBlockModalEl);
+        this.renderDayTemplateScheduleEditor();
+      });
+
+      this.btnDeleteDayTplBlock?.addEventListener('click', () => {
+        if (this.editingTplBlockIdx !== null && this.editingTplBlockIdx >= 0) {
+          const removed = this.editingTemplateSchedule.splice(this.editingTplBlockIdx, 1);
+          this.closeModal(this.dayTplBlockModalEl);
+          this.renderDayTemplateScheduleEditor();
+          this.showToast(`已刪除時段「${removed[0]?.title || ''}」`, true);
+        }
       });
 
       // Category swatches & form
@@ -491,22 +595,9 @@
         this.saveDayTemplatePanel.hidden = true;
       });
 
-      // Schedule editor row actions (add, clear, load today)
+      // Schedule editor actions (add via standard modal, clear, load today)
       this.btnAddScheduleRow?.addEventListener('click', () => {
-        let nextStart = 540; // 09:00 default
-        const list = this.editingTemplateSchedule;
-        if (list.length > 0) {
-          const last = list[list.length - 1];
-          nextStart = Math.min(1380, last.startMinutes + last.durationMinutes);
-        }
-        list.push({
-          title: '新時段活動',
-          categoryId: 'cat_work',
-          startMinutes: nextStart,
-          durationMinutes: 60,
-          note: ''
-        });
-        this.renderDayTemplateScheduleEditor();
+        this.openDayTplBlockModal(null);
       });
 
       this.btnLoadCurrentDayIntoEditor?.addEventListener('click', () => {
@@ -529,63 +620,32 @@
       });
 
       this.btnClearEditorSchedule?.addEventListener('click', () => {
-        if (this.editingTemplateSchedule.length === 0) return;
+        if (!this.editingTemplateSchedule || this.editingTemplateSchedule.length === 0) return;
         if (confirm('確定要清空時間列表中的所有時段嗎？')) {
           this.editingTemplateSchedule = [];
           this.renderDayTemplateScheduleEditor();
         }
       });
 
-      // Delegated events for schedule rows in editor
-      this.dayTplScheduleList?.addEventListener('change', (e) => {
-        const row = e.target.closest('[data-row-idx]');
-        if (!row) return;
-        const idx = Number(row.dataset.rowIdx);
-        const item = this.editingTemplateSchedule[idx];
-        if (!item) return;
-
-        const field = e.target.dataset.rowField;
-        if (field === 'start') {
-          const newStart = Number(e.target.value);
-          let end = item.startMinutes + item.durationMinutes;
-          if (end <= newStart) end = Math.min(1440, newStart + 60);
-          item.startMinutes = newStart;
-          item.durationMinutes = Math.max(15, end - newStart);
-          this.renderDayTemplateScheduleEditor();
-        } else if (field === 'end') {
-          let newEnd = Number(e.target.value);
-          if (newEnd <= item.startMinutes) {
-            newEnd = Math.min(1440, item.startMinutes + 30);
-          }
-          item.durationMinutes = Math.max(15, newEnd - item.startMinutes);
-          this.renderDayTemplateScheduleEditor();
-        } else if (field === 'category') {
-          item.categoryId = e.target.value;
-          this.renderDayTemplateScheduleEditor();
-        }
-      });
-
-      this.dayTplScheduleList?.addEventListener('input', (e) => {
-        const row = e.target.closest('[data-row-idx]');
-        if (!row) return;
-        const idx = Number(row.dataset.rowIdx);
-        const item = this.editingTemplateSchedule[idx];
-        if (!item) return;
-
-        const field = e.target.dataset.rowField;
-        if (field === 'title') {
-          item.title = e.target.value;
-        }
-      });
-
+      // Delegated events for schedule item cards in editor
       this.dayTplScheduleList?.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-row-action="delete"]');
-        if (!btn) return;
-        const row = btn.closest('[data-row-idx]');
-        if (!row) return;
-        const idx = Number(row.dataset.rowIdx);
-        this.editingTemplateSchedule.splice(idx, 1);
-        this.renderDayTemplateScheduleEditor();
+        const delBtn = e.target.closest('[data-row-action="delete"]');
+        if (delBtn) {
+          e.stopPropagation();
+          const row = delBtn.closest('[data-row-idx]');
+          if (!row) return;
+          const idx = Number(row.dataset.rowIdx);
+          const removed = this.editingTemplateSchedule.splice(idx, 1);
+          this.renderDayTemplateScheduleEditor();
+          this.showToast(`已刪除時段「${removed[0]?.title || ''}」`, true);
+          return;
+        }
+
+        const card = e.target.closest('[data-row-idx]');
+        if (card) {
+          const idx = Number(card.dataset.rowIdx);
+          this.openDayTplBlockModal(idx);
+        }
       });
 
       // Submit day template form (saves both metadata and schedule list)
@@ -1349,7 +1409,7 @@
     openModal(modalEl) {
       if (!modalEl) return;
       modalEl.hidden = false;
-      requestAnimationFrame(() => modalEl.classList.add('is-open'));
+      modalEl.classList.add('is-open');
     }
 
     closeModal(modalEl) {
@@ -1368,8 +1428,9 @@
         this.statsModalEl,
         this.syncModalEl,
         this.calendarModalEl,
-        this.dayTemplateModalEl
-      ].forEach((m) => this.closeModal(m));
+        this.dayTemplateModalEl,
+        this.dayTplBlockModalEl
+      ].filter(Boolean).forEach((m) => this.closeModal(m));
       this.closeMobileDrawer();
     }
 
@@ -1491,9 +1552,25 @@
 
     // --- Calendar Month Picker Modal ---
     openCalendarModal() {
-      const parsed = TF.utils.parseDateKey(TF.store.selectedDate);
-      this.calYear = parsed.getFullYear();
-      this.calMonth = parsed.getMonth();
+      if (!this.calendarModalEl) this.calendarModalEl = document.getElementById('calendarModal');
+      if (!this.calendarGridDays) this.calendarGridDays = document.getElementById('calendarGridDays');
+      if (!this.calendarModalMonthLabel) this.calendarModalMonthLabel = document.getElementById('calendarModalMonthLabel');
+
+      try {
+        const parsed = TF.utils.parseDateKey(TF.store.selectedDate);
+        if (parsed && !isNaN(parsed.getTime())) {
+          this.calYear = parsed.getFullYear();
+          this.calMonth = parsed.getMonth();
+        } else {
+          const now = new Date();
+          this.calYear = now.getFullYear();
+          this.calMonth = now.getMonth();
+        }
+      } catch (err) {
+        const now = new Date();
+        this.calYear = now.getFullYear();
+        this.calMonth = now.getMonth();
+      }
       this.renderCalendarMonth();
       this.openModal(this.calendarModalEl);
     }
@@ -1693,53 +1770,93 @@
         return;
       }
 
-      const timeOptions = (selectedMinutes, isEnd = false) => {
-        const opts = [];
-        const startMin = isEnd ? 15 : 0;
-        const endMin = isEnd ? 1440 : 1425;
-        for (let m = startMin; m <= endMin; m += 15) {
-          const isSel = m === selectedMinutes;
-          opts.push(`<option value="${m}" ${isSel ? 'selected' : ''}>${TF.utils.formatTime(m)}</option>`);
-        }
-        return opts.join('');
-      };
-
-      const categoryOptions = (selectedCatId) => {
-        return categories.map((c) => {
-          const isSel = c.id === selectedCatId;
-          return `<option value="${c.id}" ${isSel ? 'selected' : ''}>${escapeHtml(c.icon || '')} ${escapeHtml(c.name)}</option>`;
-        }).join('');
-      };
-
       const rowsHtml = list.map((item, idx) => {
         const cat = TF.store.getCategoryById(item.categoryId) || categories[0] || { color: '#3B82F6', icon: '📌', name: '未分類' };
-        const endMinutes = Math.min(1440, item.startMinutes + item.durationMinutes);
+        const endMinutes = Math.min(MINUTES_PER_DAY, item.startMinutes + item.durationMinutes);
+        const timeRangeStr = `${TF.utils.formatTime(item.startMinutes)} – ${TF.utils.formatTime(endMinutes)}`;
+
         return `
-          <div class="day-tpl-schedule-row" data-row-idx="${idx}">
-            <div class="schedule-row-color-bar" style="background:${cat.color}"></div>
-            <div class="schedule-row-time-group">
-              <select class="schedule-select schedule-start" data-row-field="start" data-row-idx="${idx}" aria-label="開始時間">
-                ${timeOptions(item.startMinutes, false)}
-              </select>
-              <span class="schedule-to-sep">至</span>
-              <select class="schedule-select schedule-end" data-row-field="end" data-row-idx="${idx}" aria-label="結束時間">
-                ${timeOptions(endMinutes, true)}
-              </select>
-              <span class="schedule-dur-badge">${formatDuration(item.durationMinutes)}</span>
+          <div class="day-tpl-item-card" data-row-idx="${idx}" role="button" tabindex="0" title="點擊編輯此活動方塊（開啟標準活動表單）">
+            <div class="day-tpl-item-strip" style="background:${cat.color}"></div>
+            <div class="day-tpl-item-time-badge">${timeRangeStr}</div>
+            <div class="day-tpl-item-main">
+              <div class="day-tpl-item-title-row">
+                <span class="day-tpl-item-cat-pill" style="--pill-color:${cat.color}; color:${cat.color}; background:${TF.utils.hexToRgba(cat.color, 0.12)}">
+                  ${escapeHtml(cat.icon || '')} ${escapeHtml(cat.name)}
+                </span>
+                <span class="day-tpl-item-title">${escapeHtml(item.title)}</span>
+              </div>
+              ${item.note ? `<div class="day-tpl-item-note">${escapeHtml(item.note)}</div>` : ''}
             </div>
-            <div class="schedule-row-detail-group">
-              <select class="schedule-select schedule-cat" data-row-field="category" data-row-idx="${idx}" aria-label="活動分類">
-                ${categoryOptions(item.categoryId)}
-              </select>
-              <input type="text" class="schedule-input-title" data-row-field="title" data-row-idx="${idx}" value="${escapeHtml(item.title)}" placeholder="活動名稱..." required />
+            <div class="day-tpl-item-dur">${TF.utils.formatDuration(item.durationMinutes)}</div>
+            <div class="day-tpl-item-actions">
+              <button type="button" class="btn-xs-secondary" data-row-action="edit" data-row-idx="${idx}" title="以標準活動方塊介面編輯">✏️ 編輯</button>
+              <button type="button" class="btn-row-del" data-row-action="delete" data-row-idx="${idx}" title="刪除此時段">✕</button>
             </div>
-            <button type="button" class="btn-row-del" data-row-action="delete" data-row-idx="${idx}" title="刪除此時段">✕</button>
           </div>
         `;
       }).join('');
 
       this.dayTplScheduleList.innerHTML = rowsHtml;
       this.updateDayTemplateScheduleSummary();
+    }
+
+    openDayTplBlockModal(itemIndex = null) {
+      this.editingTplBlockIdx = itemIndex;
+      const categories = TF.store.getCategories();
+      const list = this.editingTemplateSchedule || [];
+      const item = itemIndex !== null && itemIndex >= 0 ? list[itemIndex] : null;
+
+      const title = item ? item.title : '';
+      let catId = item ? item.categoryId : (categories[0]?.id || 'cat_work');
+      let start = item ? item.startMinutes : 540; // 09:00 default
+      let duration = item ? item.durationMinutes : DEFAULT_DURATION;
+
+      if (!item) {
+        // 新增時段時，自動接續前一個時段的結束時間
+        if (list.length > 0) {
+          const last = list[list.length - 1];
+          const nextStart = last.startMinutes + last.durationMinutes;
+          if (nextStart < MINUTES_PER_DAY) {
+            start = nextStart;
+          }
+        }
+      }
+
+      const end = Math.min(MINUTES_PER_DAY, start + duration);
+      const note = item ? (item.note || '') : '';
+
+      if (this.dayTplBlockModalTitle) {
+        this.dayTplBlockModalTitle.textContent = item ? `✏️ 編輯模板活動時段` : `＋ 新增模板活動時段`;
+      }
+
+      if (this.dayTplBlockTitleInput) this.dayTplBlockTitleInput.value = title;
+      if (this.dayTplBlockStartSelect) this.dayTplBlockStartSelect.value = String(start);
+      if (this.dayTplBlockEndSelect) this.dayTplBlockEndSelect.value = String(end);
+      if (this.dayTplBlockNoteInput) this.dayTplBlockNoteInput.value = note;
+      if (this.btnDeleteDayTplBlock) this.btnDeleteDayTplBlock.hidden = !item;
+
+      // 渲染分類藥丸網格（與 blockModal 完全一模一樣的架構）
+      if (this.dayTplBlockCategoryPicker) {
+        this.dayTplBlockCategoryPicker.innerHTML = categories.map((cat) => `
+          <button type="button" class="cat-pick-pill ${cat.id === catId ? 'is-active' : ''}" data-cat-id="${cat.id}" style="--pill-color:${cat.color}">
+            <span class="cat-dot" style="background:${cat.color}"></span>
+            <span>${escapeHtml(cat.icon || '')} ${escapeHtml(cat.name)}</span>
+          </button>
+        `).join('');
+      }
+
+      this.highlightActiveDayTplDurationChip();
+      this.openModal(this.dayTplBlockModalEl);
+      setTimeout(() => this.dayTplBlockTitleInput?.focus(), 60);
+    }
+
+    highlightActiveDayTplDurationChip() {
+      if (!this.dayTplBlockDurationChips || !this.dayTplBlockStartSelect || !this.dayTplBlockEndSelect) return;
+      const dur = Number(this.dayTplBlockEndSelect.value) - Number(this.dayTplBlockStartSelect.value);
+      this.dayTplBlockDurationChips.querySelectorAll('[data-dur]').forEach((chip) => {
+        chip.classList.toggle('is-active', Number(chip.dataset.dur) === dur);
+      });
     }
 
     updateDayTemplateScheduleSummary() {

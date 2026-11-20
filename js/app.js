@@ -37,11 +37,19 @@
       TF.timeline.scrollToSmartPosition();
     });
 
-    document.getElementById('datePickerInput').addEventListener('change', (e) => {
+    document.getElementById('datePickerInput')?.addEventListener('change', (e) => {
       if (e.target.value) TF.store.setDate(e.target.value);
     });
 
-    document.getElementById('btnDateDisplay').addEventListener('click', () => {
+    // Calendar Modal Openers (Header, Mobile Dock & Mobile Drawer)
+    const openCalendarHandler = (e) => {
+      e?.preventDefault?.();
+      TF.ui.openCalendarModal();
+    };
+    document.getElementById('btnDateDisplay')?.addEventListener('click', openCalendarHandler);
+    document.getElementById('btnDockCalendar')?.addEventListener('click', openCalendarHandler);
+    document.getElementById('btnDrawerCalendar')?.addEventListener('click', () => {
+      TF.ui.closeMobileDrawer();
       TF.ui.openCalendarModal();
     });
 

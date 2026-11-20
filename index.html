@@ -35,9 +35,12 @@
       <div class="header-center">
         <div class="date-nav">
           <button type="button" class="icon-btn" id="btnPrevDay" title="前一天" aria-label="前一天">‹</button>
-          <button type="button" class="date-display-btn" id="btnDateDisplay" title="選擇日期">
-            <span class="date-main" id="currentDateLabel">今日</span>
-            <span class="date-sub" id="currentDateSub">今天</span>
+          <button type="button" class="date-display-btn" id="btnDateDisplay" title="點擊開啟日曆選擇器" aria-label="開啟日曆選擇器">
+            <span class="date-btn-icon" aria-hidden="true">📅</span>
+            <span class="date-btn-text">
+              <span class="date-main" id="currentDateLabel">今日</span>
+              <span class="date-sub" id="currentDateSub">今天</span>
+            </span>
           </button>
           <input type="date" id="datePickerInput" class="sr-only-date" aria-label="選擇日期" />
           <button type="button" class="icon-btn" id="btnNextDay" title="後一天" aria-label="後一天">›</button>
@@ -83,7 +86,7 @@
 
         <div class="sidebar-footer-tip">
           <span>💡 預設 1 小時，拖曳方塊上下邊緣可每 <b>15 分鐘</b>調整高度。雙擊空白處也可快速新增。</span>
-          <div class="sidebar-version-tag">時間方塊 v1.3.0</div>
+          <div class="sidebar-version-tag">時間方塊 v1.3.1</div>
         </div>
       </aside>
 
@@ -142,10 +145,11 @@
       <div class="mobile-dock-bar">
         <span class="mobile-dock-hint">👆 往上拖曳填入時間表</span>
         <div class="mobile-dock-actions">
-          <button type="button" class="btn-xs-secondary" id="btnDockDayTemplates" title="一日模板">📅 模板</button>
-          <button type="button" class="btn-xs-secondary" data-open-categories>類別</button>
-          <button type="button" class="btn-xs-primary" data-add-template>＋ 新增</button>
-          <button type="button" class="btn-xs-secondary" id="btnOpenMobileDrawer">展開 ▲</button>
+          <button type="button" class="btn-xs-secondary" id="btnDockCalendar" title="選擇日期日曆">📅 日曆</button>
+          <button type="button" class="btn-xs-secondary" id="btnDockDayTemplates" title="一日模板">📋 模板</button>
+          <button type="button" class="btn-xs-secondary" data-open-categories title="管理活動類別">🏷️ 類別</button>
+          <button type="button" class="btn-xs-primary" data-add-template title="新增活動方塊">＋ 新增</button>
+          <button type="button" class="btn-xs-secondary" id="btnOpenMobileDrawer" title="展開全部抽屜">展開 ▲</button>
         </div>
       </div>
       <div class="mobile-dock-scroll" id="mobileDockList"></div>
@@ -161,7 +165,8 @@
           <p class="panel-hint">長按方塊即可拖曳到 24 小時表</p>
         </div>
         <div class="panel-header-actions">
-          <button type="button" class="btn-sm-secondary" id="btnDrawerDayTemplates">📅 一日模板</button>
+          <button type="button" class="btn-sm-secondary" id="btnDrawerCalendar">📅 日曆</button>
+          <button type="button" class="btn-sm-secondary" id="btnDrawerDayTemplates">📋 一日模板</button>
           <button type="button" class="btn-sm-secondary" data-open-categories>類別</button>
           <button type="button" class="btn-sm-primary" data-add-template>＋ 新增</button>
           <button type="button" class="icon-btn-sm" id="btnCloseMobileDrawer" aria-label="關閉">✕</button>
@@ -169,7 +174,7 @@
       </div>
       <div class="category-filters" id="categoryFiltersMobile"></div>
       <div class="template-list drawer-template-list" id="templateListMobile"></div>
-      <div class="drawer-version-tag">時間方塊 v1.3.0</div>
+      <div class="drawer-version-tag">時間方塊 v1.3.1</div>
     </div>
   </div>
 
@@ -181,10 +186,10 @@
   <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
 
   <!-- Corner Version Badge (Always visible in bottom-right corner) -->
-  <div class="corner-version-badge" id="cornerVersionBadge" role="status" title="時間方塊 v1.3.0 · 點擊檢查更新">
+  <div class="corner-version-badge" id="cornerVersionBadge" role="status" title="時間方塊 v1.3.1 · 點擊檢查更新">
     <span class="version-dot" aria-hidden="true"></span>
     <span class="version-label">時間方塊</span>
-    <span class="version-code">v1.3.0</span>
+    <span class="version-code">v1.3.1</span>
   </div>
 
   <!-- Modal 1: Edit / Create Time Block -->
@@ -507,12 +512,12 @@
               <input type="text" id="newDayTplDesc" class="form-input" placeholder="簡短描述此一日排程特色..." />
             </div>
 
-            <!-- 時間列表編輯區塊 -->
+            <!-- 時間列表編輯區塊（和平時編輯時間列表相同的介面與邏輯） -->
             <div class="day-tpl-schedule-section">
               <div class="day-tpl-schedule-header">
                 <div>
                   <h5 class="day-tpl-schedule-title">📅 活動時間列表（時段排程）</h5>
-                  <p class="panel-hint m-0">在下方直接新增、刪除或修改每個時段的時間與活動內容：</p>
+                  <p class="panel-hint m-0">點擊任一時段卡片或下方按鈕，即可用標準活動方塊介面進行編輯：</p>
                 </div>
                 <div class="day-tpl-schedule-quick-actions">
                   <button type="button" class="btn-xs-secondary" id="btnLoadCurrentDayIntoEditor" title="將今天時間軸上的排程帶入此清單供微調">📋 帶入今日排程</button>
@@ -520,11 +525,11 @@
                 </div>
               </div>
 
-              <!-- 動態渲染的時間段列表容器 -->
+              <!-- 動態渲染的時間段列表容器（以卡片化方式清晰展示） -->
               <div class="day-tpl-schedule-list" id="dayTplScheduleList"></div>
 
               <div class="day-tpl-schedule-add-bar">
-                <button type="button" class="btn-sm-secondary w-full" id="btnAddScheduleRow">＋ 新增活動時段</button>
+                <button type="button" class="btn-sm-secondary w-full" id="btnAddScheduleRow">＋ 新增活動時段（開啟活動方塊編輯）</button>
               </div>
 
               <div class="day-tpl-schedule-summary" id="dayTplScheduleSummary">
@@ -542,6 +547,64 @@
 
         <div class="day-tpl-list" id="dayTemplateList"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal 8: Edit Day Template Time Block (和平時編輯時間列表完全一模一樣的介面) -->
+  <div class="modal-backdrop" id="dayTplBlockModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="dayTplBlockModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="dayTplBlockModalTitle">編輯模板活動時段</h3>
+        <button type="button" class="icon-btn-sm" data-close-modal="dayTplBlockModal" aria-label="關閉">✕</button>
+      </div>
+      <form id="dayTplBlockForm" class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="dayTplBlockTitleInput">活動名稱</label>
+          <input type="text" id="dayTplBlockTitleInput" class="form-input" placeholder="例如：深度工作、運動、閱讀..." required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">活動類別</label>
+          <div class="cat-picker-grid" id="dayTplBlockCategoryPicker"></div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="dayTplBlockStartSelect">開始時間</label>
+            <select id="dayTplBlockStartSelect" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="dayTplBlockEndSelect">結束時間</label>
+            <select id="dayTplBlockEndSelect" class="form-select"></select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">快速設定時長（15 分鐘為單位）</label>
+          <div class="duration-chips" id="dayTplBlockDurationChips">
+            <button type="button" class="dur-chip" data-dur="15">15分</button>
+            <button type="button" class="dur-chip" data-dur="30">30分</button>
+            <button type="button" class="dur-chip" data-dur="45">45分</button>
+            <button type="button" class="dur-chip" data-dur="60">1小時</button>
+            <button type="button" class="dur-chip" data-dur="90">1.5小時</button>
+            <button type="button" class="dur-chip" data-dur="120">2小時</button>
+            <button type="button" class="dur-chip" data-dur="180">3小時</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="dayTplBlockNoteInput">備註（選填）</label>
+          <textarea id="dayTplBlockNoteInput" class="form-textarea" rows="2" placeholder="記錄細節或目標..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-danger" id="btnDeleteDayTplBlock">刪除此時段</button>
+          <div class="modal-footer-right">
+            <button type="button" class="btn-secondary" data-close-modal="dayTplBlockModal">取消</button>
+            <button type="submit" class="btn-primary" id="btnSaveDayTplBlock">完成時段</button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 
