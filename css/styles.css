@@ -167,43 +167,23 @@ button {
 
 .date-display-btn {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   border: none;
   background: transparent;
-  padding: 2px 10px;
+  padding: 2px 12px;
   min-width: 112px;
   border-radius: 7px;
-  cursor: pointer;
-  touch-action: manipulation;
   transition: background 0.15s;
-}
-
-.date-display-btn * {
-  pointer-events: none;
 }
 
 .date-display-btn:hover {
   background: var(--bg-hover);
 }
 
-.date-btn-icon {
-  font-size: 15px;
-  line-height: 1;
-  opacity: 0.9;
-}
-
-.date-btn-text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
 .date-main {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -1821,7 +1801,7 @@ button {
   border-top: 1px solid var(--border-color);
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.08);
-  z-index: 50;
+  z-index: 25;
 }
 
 .mobile-dock-bar {
@@ -1842,12 +1822,6 @@ button {
   display: flex;
   align-items: center;
   gap: 5px;
-}
-
-.mobile-dock-actions button {
-  touch-action: manipulation;
-  cursor: pointer;
-  min-height: 28px;
 }
 
 .mobile-dock-scroll {
@@ -1873,21 +1847,6 @@ button {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  cursor: pointer;
-  touch-action: pan-x;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
-}
-
-.dock-card:hover {
-  border-color: var(--tpl-color);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.dock-card:active {
-  transform: scale(0.96);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 .dock-card-bar {
@@ -1923,18 +1882,6 @@ button {
   inset: 0;
   background: rgba(15, 23, 42, 0.45);
   z-index: 40;
-  display: none;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
-}
-
-.drawer-backdrop.is-open {
-  display: block;
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
 }
 
 .mobile-drawer {
@@ -1952,14 +1899,10 @@ button {
   padding-bottom: env(safe-area-inset-bottom);
   transform: translateY(105%);
   transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .mobile-drawer.is-open {
   transform: translateY(0);
-  visibility: visible;
-  pointer-events: auto;
 }
 
 .drawer-handle {
@@ -1980,22 +1923,17 @@ button {
   inset: 0;
   background: rgba(15, 23, 42, 0.48);
   backdrop-filter: blur(3px);
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
   z-index: 100;
   opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.18s ease, visibility 0.18s ease;
+  transition: opacity 0.18s ease;
 }
 
 .modal-backdrop.is-open {
-  display: flex;
   opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
 }
 
 .modal-card {
@@ -2262,16 +2200,12 @@ button {
   box-shadow: var(--shadow-lg);
   z-index: 200;
   opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
   max-width: calc(100vw - 32px);
 }
 
 .toast.is-visible {
   opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
   transform: translate(-50%, 0);
 }
 
@@ -2764,445 +2698,10 @@ button {
 @media (max-width: 768px) {
   .corner-version-badge {
     right: 10px;
-    bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
     padding: 3px 8px;
     font-size: 10.5px;
     background: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.88);
-    pointer-events: none !important;
   }
 }
 
-
-/* ==================== Day Template Schedule List Editor ==================== */
-.save-day-tpl-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.day-tpl-top-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.day-tpl-schedule-section {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 12px;
-  margin: 12px 0;
-}
-
-.day-tpl-schedule-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.day-tpl-schedule-title {
-  margin: 0 0 2px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.day-tpl-schedule-quick-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-xs-secondary {
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-xs-secondary:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.btn-xs-secondary.is-danger-text:hover {
-  color: #EF4444;
-  border-color: rgba(239, 68, 68, 0.4);
-}
-
-.day-tpl-schedule-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 40vh;
-  overflow-y: auto;
-  padding: 2px 0;
-  margin-bottom: 10px;
-}
-
-.day-tpl-schedule-row {
-  display: grid;
-  grid-template-columns: 4px auto 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-color);
-  border-radius: 9px;
-  transition: all 0.15s;
-}
-
-.day-tpl-schedule-row:hover {
-  border-color: var(--accent);
-  background: var(--bg-surface);
-}
-
-.schedule-row-color-bar {
-  width: 4px;
-  height: 28px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-
-.schedule-row-time-group {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.schedule-to-sep {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.schedule-dur-badge {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--accent);
-  background: var(--accent-soft);
-  padding: 2px 6px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.schedule-row-detail-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.schedule-select {
-  padding: 5px 6px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 7px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  outline: none;
-}
-
-.schedule-select:focus {
-  border-color: var(--accent);
-}
-
-.schedule-input-title {
-  flex: 1;
-  min-width: 100px;
-  padding: 5px 8px;
-  font-size: 12.5px;
-  font-weight: 600;
-  border-radius: 7px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  outline: none;
-}
-
-.schedule-input-title:focus {
-  border-color: var(--accent);
-}
-
-.btn-row-del {
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 13px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.btn-row-del:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #EF4444;
-}
-
-.day-tpl-schedule-add-bar {
-  margin: 8px 0 10px;
-}
-
-.day-tpl-schedule-summary {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent);
-  text-align: right;
-  padding-top: 4px;
-}
-
-/* ==================== Day Template Item Cards (同款活動方塊編輯) ==================== */
-.day-tpl-item-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  margin-bottom: 7px;
-  cursor: pointer;
-  transition: all 0.16s ease;
-}
-
-.day-tpl-item-card:hover {
-  border-color: var(--accent);
-  background: var(--bg-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.day-tpl-item-strip {
-  width: 4px;
-  height: 32px;
-  border-radius: 999px;
-  flex-shrink: 0;
-}
-
-.day-tpl-item-time-badge {
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-  background: var(--bg-subtle);
-  padding: 3px 7px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.day-tpl-item-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.day-tpl-item-title-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.day-tpl-item-cat-pill {
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 6px;
-  white-space: nowrap;
-}
-
-.day-tpl-item-title {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.day-tpl-item-note {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.day-tpl-item-dur {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: var(--bg-subtle);
-  padding: 2px 6px;
-  border-radius: 5px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.day-tpl-item-actions {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-@media (max-width: 480px) {
-  .app-header {
-    padding: 0 6px;
-    gap: 4px;
-  }
-  .brand-badge {
-    display: none;
-  }
-  .header-left, .header-center, .header-right {
-    gap: 4px;
-  }
-  .date-nav {
-    padding: 1px;
-  }
-  .date-display-btn {
-    min-width: 78px;
-    padding: 2px 4px;
-    gap: 3px;
-  }
-  .date-btn-icon {
-    font-size: 13px;
-  }
-  .date-main {
-    font-size: 12px;
-  }
-  .date-sub {
-    font-size: 9.5px;
-  }
-  .icon-btn {
-    width: 30px;
-    height: 30px;
-    font-size: 16px;
-  }
-  .btn-pill {
-    padding: 4px 7px;
-    font-size: 11px;
-  }
-  .zoom-btn {
-    padding: 3px 5px;
-    font-size: 10.5px;
-  }
-  .mobile-dock-bar {
-    padding: 6px 8px 4px;
-    gap: 4px;
-  }
-  .mobile-dock-hint {
-    display: none;
-  }
-  .mobile-dock-actions {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    gap: 3px;
-  }
-  .mobile-dock-actions .btn-xs-secondary,
-  .mobile-dock-actions .btn-xs-primary {
-    padding: 4px 6px;
-    font-size: 11px;
-  }
-  .day-tpl-item-card {
-    padding: 8px 9px;
-    gap: 6px;
-  }
-  .day-tpl-item-time-badge {
-    font-size: 11px;
-    padding: 2px 5px;
-  }
-  .day-tpl-item-dur {
-    display: none;
-  }
-  .corner-version-badge {
-    right: 8px;
-    bottom: calc(104px + env(safe-area-inset-bottom, 0px));
-    padding: 2px 7px;
-    font-size: 10px;
-    opacity: 0.88;
-    pointer-events: none !important;
-  }
-}
-
-/* Month Chart Bars */
-.month-chart-bars {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-  height: 86px;
-  align-items: flex-end;
-}
-
-.month-chart-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  cursor: pointer;
-  padding: 4px 2px;
-  border-radius: 8px;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.month-chart-col:hover {
-  background: rgba(255, 255, 255, 0.05);
-  transform: translateY(-2px);
-}
-
-.month-col-hrs {
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-  margin-bottom: 4px;
-}
-
-.month-col-bar-wrap {
-  width: 100%;
-  max-width: 22px;
-  height: 48px;
-  background: rgba(125, 125, 125, 0.15);
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  overflow: hidden;
-  margin-bottom: 5px;
-}
-
-.month-col-bar-fill {
-  width: 100%;
-  background: linear-gradient(180deg, #10B981 0%, rgba(16, 185, 129, 0.75) 100%);
-  border-radius: 5px 5px 0 0;
-  min-height: 2px;
-  transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.month-col-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-primary);
-}

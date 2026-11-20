@@ -252,11 +252,11 @@
         };
 
         if (isTouch) {
-          // Hold 240ms OR drag upward immediately lifts the block onto the 24h timeline
+          // Hold 160ms OR drag upward immediately lifts the block onto the 24h timeline
           op.longPressTimer = setTimeout(() => {
             if (this.activeOp !== op || op.activated) return;
             this.activateTemplateDrag(op, this.lastPointer.x, this.lastPointer.y);
-          }, 240);
+          }, 160);
         }
 
         this.activeOp = op;
@@ -346,27 +346,27 @@
         if (!op.activated) {
           if (op.isTouch) {
             if (op.inMobileDock) {
-              // Upward drag immediately locks onto the card and lifts into the timeline
-              if (dy < -6) {
+              // Upward drag immediately locks onto the card and blocks Safari scroll!
+              if (dy < -4 && Math.abs(dy) >= Math.abs(dx) * 0.65) {
                 rawEvent.preventDefault();
                 clearTimeout(op.longPressTimer);
                 this.activateTemplateDrag(op, clientX, clientY);
                 return;
               }
-              // Horizontal swipe inside dock
-              if (Math.abs(dx) > 16 && Math.abs(dy) < 10) {
+              // Clearly horizontal swipe -> let dock scroll sideways smoothly
+              if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.4) {
                 clearTimeout(op.longPressTimer);
-                op.isSwiping = true;
+                this.activeOp = null;
               }
               return;
             } else {
               // Inside vertical drawer list: vertical scroll vs horizontal/hold drag
-              if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.4) {
+              if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.4) {
                 clearTimeout(op.longPressTimer);
-                op.isSwiping = true;
+                this.activeOp = null;
                 return;
               }
-              if (Math.abs(dx) > 8 || dy < -6) {
+              if (Math.abs(dx) > 10 && Math.abs(dx) >= Math.abs(dy)) {
                 rawEvent.preventDefault();
                 clearTimeout(op.longPressTimer);
                 this.activateTemplateDrag(op, clientX, clientY);
@@ -375,8 +375,7 @@
               return;
             }
           } else {
-            if (dist >= 5) {
-              rawEvent.preventDefault();
+            if (dist >= 6) {
               this.activateTemplateDrag(op, clientX, clientY);
             } else {
               return;
@@ -529,11 +528,6 @@
             startMinutes: op.dropStartMinutes,
             durationMinutes: op.template.defaultDuration || DEFAULT_DURATION
           });
-        } else if (!op.isSwiping) {
-          // User clicked, tapped, or lifted without dragging into timeline -> Smart Click-to-Add!
-          const cardEl = document.querySelector(`[data-template-id="${op.template.id}"]`);
-          if (cardEl) cardEl._lastQuickAdd = Date.now();
-          TF.ui?.quickAddTemplateToTimeline?.(op.template.id);
         }
       }
 
