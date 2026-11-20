@@ -126,6 +126,12 @@
       this.scrollEl.scrollTo({ top: targetPx, behavior: 'auto' });
     }
 
+    scrollToMinutes(minutes, smooth = true) {
+      if (TF.store.state.settings.hourHeight === 'fit') return;
+      const targetPx = Math.max(0, this.minutesToPx(minutes) - 100);
+      this.scrollEl.scrollTo({ top: targetPx, behavior: smooth ? 'smooth' : 'auto' });
+    }
+
     showDropPreview({ startMinutes, durationMinutes, color, title }) {
       const top = this.minutesToPx(startMinutes);
       const height = Math.max(14, this.minutesToPx(durationMinutes));
@@ -237,10 +243,10 @@
     isPointInsideTimeline(clientX, clientY) {
       const rect = this.scrollEl.getBoundingClientRect();
       return (
-        clientX >= rect.left - 24 &&
-        clientX <= rect.right + 24 &&
-        clientY >= rect.top - 10 &&
-        clientY <= rect.bottom + 24
+        clientX >= rect.left - 48 &&
+        clientX <= rect.right + 48 &&
+        clientY >= rect.top - 24 &&
+        clientY <= rect.bottom + 64
       );
     }
   }

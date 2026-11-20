@@ -1816,7 +1816,7 @@ button {
   border-top: 1px solid var(--border-color);
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.08);
-  z-index: 25;
+  z-index: 35;
 }
 
 .mobile-dock-bar {
@@ -1837,6 +1837,12 @@ button {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.mobile-dock-actions button {
+  touch-action: manipulation;
+  cursor: pointer;
+  min-height: 28px;
 }
 
 .mobile-dock-scroll {
@@ -1862,6 +1868,21 @@ button {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  cursor: pointer;
+  touch-action: pan-x;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.dock-card:hover {
+  border-color: var(--tpl-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.dock-card:active {
+  transform: scale(0.96);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 .dock-card-bar {
@@ -1914,10 +1935,14 @@ button {
   padding-bottom: env(safe-area-inset-bottom);
   transform: translateY(105%);
   transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .mobile-drawer.is-open {
   transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .drawer-handle {
@@ -2713,10 +2738,11 @@ button {
 @media (max-width: 768px) {
   .corner-version-badge {
     right: 10px;
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(108px + env(safe-area-inset-bottom, 0px));
     padding: 3px 8px;
     font-size: 10.5px;
     background: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.88);
+    pointer-events: none !important;
   }
 }
 
@@ -3086,10 +3112,11 @@ button {
   }
   .corner-version-badge {
     right: 8px;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(104px + env(safe-area-inset-bottom, 0px));
     padding: 2px 7px;
     font-size: 10px;
     opacity: 0.88;
+    pointer-events: none !important;
   }
 }
 

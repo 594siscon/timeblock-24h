@@ -346,27 +346,27 @@
         if (!op.activated) {
           if (op.isTouch) {
             if (op.inMobileDock) {
-              // Upward drag immediately locks onto the card and blocks Safari scroll!
-              if (dy < -4 && Math.abs(dy) >= Math.abs(dx) * 0.65) {
+              // Upward drag immediately locks onto the card and lifts into the timeline
+              if (dy < -6) {
                 rawEvent.preventDefault();
                 clearTimeout(op.longPressTimer);
                 this.activateTemplateDrag(op, clientX, clientY);
                 return;
               }
-              // Clearly horizontal swipe -> let dock scroll sideways smoothly
-              if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+              // Horizontal swipe inside dock
+              if (Math.abs(dx) > 16 && Math.abs(dy) < 10) {
                 clearTimeout(op.longPressTimer);
-                this.activeOp = null;
+                op.isSwiping = true;
               }
               return;
             } else {
               // Inside vertical drawer list: vertical scroll vs horizontal/hold drag
-              if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.4) {
+              if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.4) {
                 clearTimeout(op.longPressTimer);
-                this.activeOp = null;
+                op.isSwiping = true;
                 return;
               }
-              if (Math.abs(dx) > 10 && Math.abs(dx) >= Math.abs(dy)) {
+              if (Math.abs(dx) > 8 || dy < -6) {
                 rawEvent.preventDefault();
                 clearTimeout(op.longPressTimer);
                 this.activateTemplateDrag(op, clientX, clientY);
@@ -375,7 +375,8 @@
               return;
             }
           } else {
-            if (dist >= 6) {
+            if (dist >= 5) {
+              rawEvent.preventDefault();
               this.activateTemplateDrag(op, clientX, clientY);
             } else {
               return;
@@ -528,6 +529,11 @@
             startMinutes: op.dropStartMinutes,
             durationMinutes: op.template.defaultDuration || DEFAULT_DURATION
           });
+        } else if (!op.activated && !op.isSwiping) {
+          // User clicked or tapped the card without dragging -> Smart Click-to-Add!
+          const cardEl = document.querySelector(`[data-template-id="${op.template.id}"]`);
+          if (cardEl) cardEl._lastQuickAdd = Date.now();
+          TF.ui?.quickAddTemplateToTimeline?.(op.template.id);
         }
       }
 
