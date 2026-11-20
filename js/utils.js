@@ -5,7 +5,7 @@
   global.TimeBlock = TF;
 
   const APP_NAME = '時間方塊';
-  const APP_VERSION = 'v2.1.0';
+  const APP_VERSION = 'v2.1.1';
   const APP_BUILD_DATE = '2026-11-20';
   const MINUTES_PER_DAY = 1440;
   const SNAP_MINUTES = 15;
@@ -17,11 +17,29 @@
    */
   const VERSION_HISTORY = [
     {
-      version: 'v2.1.0',
-      commit: 'fe2ccd1',
+      version: 'v2.1.1',
+      commit: 'HEAD',
       date: '2026-11-20',
       tag: '最新正式版',
       isCurrent: true,
+      title: '取消電腦版類別橫向拉桿（改為自動換行）與修正手機版頂部統計按鈕超出畫面',
+      changes: [
+        '電腦版：取消左側活動類別篩選區的左右橫向拉桿（Scrollbar），改為自動換行多列平鋪，所有類別一目了然直接點擊',
+        '手機版：最佳化頂部 Header 響應式寬度與間距（精簡手機端品牌文字與按鈕內距），確保右上角「📊 統計」與「🌙 主題」按鈕完整顯示不超出畫面',
+        '新增專案根目錄 CHANGELOG.md 與版本面板內的「💻 代碼與架構層級變更明細」折疊區塊'
+      ],
+      files: ['css/styles.css', 'index.html', 'js/utils.js', 'sw.js', 'manifest.json', 'CHANGELOG.md'],
+      codeDetails: [
+        'CSS 排版修正：將 .category-filters 由 overflow-x: auto 改為 flex-wrap: wrap; overflow: visible; 並移除 ::-webkit-scrollbar 規則',
+        '響應式 Header 修正：於 @media (max-width: 960px) 與 (max-width: 480px) 設定 .app-header { max-width: 100vw; overflow: hidden; }，隱藏手機端 .brand-text 並收緊 .date-display-btn 與 .icon-btn 寬度'
+      ]
+    },
+    {
+      version: 'v2.1.0',
+      commit: 'fe2ccd1',
+      date: '2026-11-20',
+      tag: '功能升級版',
+      isCurrent: false,
       title: '模板 24H 時間軸拖拽編輯、複數可支配時段與介面精簡美化',
       changes: [
         '一日模板支援「24H 時間軸實境拖拽編輯模式」：可像平時編輯時間列表一樣，直接從 Dock 拖拽活動方塊、拉動邊緣調整時長',

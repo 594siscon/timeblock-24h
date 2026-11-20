@@ -4,6 +4,21 @@
 
 ---
 
+## [v2.1.1] - 2026-11-20
+### 核心主題：取消電腦版類別橫向拉桿、修正手機版頂部統計按鈕超出畫面、補齊代碼級變更面板
+
+#### 1. 檔案與樣式級別變更（File & CSS Diffs）
+- **[css/styles.css](file:///c:/Users/user/Desktop/文件/時間管理app/css/styles.css)**
+  - `.category-filters`：移除 `overflow-x: auto` 與 `::-webkit-scrollbar` 橫向捲軸樣式，改為 `flex-wrap: wrap; overflow: visible;`，讓所有類別標籤自動換行完整呈現。
+  - `@media (max-width: 960px)` & `@media (max-width: 480px)`：
+    - 為 `.app-header` 設定 `width: 100%; max-width: 100vw; overflow: hidden; padding: 0 6px; gap: 3px;`。
+    - 手機版隱藏 `.brand-text`（僅保留品牌圖示 `.brand-logo`），並將 `.icon-btn` 縮小為 `27px × 27px`、`.date-display-btn` 最小寬度收緊為 `72px`，確保右上角的 `#btnMobileStats`（📊 統計）與 `#btnThemeToggle`（🌙 主題）在任何手機螢幕寬度下皆完整顯示於畫面內。
+- **[js/utils.js](file:///c:/Users/user/Desktop/文件/時間管理app/js/utils.js) & [js/ui.js](file:///c:/Users/user/Desktop/文件/時間管理app/js/ui.js)**
+  - `APP_VERSION` 升級為 `'v2.1.1'`。
+  - `VERSION_HISTORY` 每個版本新增 `commit`、`files`、`codeDetails` 欄位，並於 `renderVersionChangelog()` 渲染「💻 代碼與架構層級變更明細」折疊區塊。
+
+---
+
 ## [v2.1.0] - 2026-11-20 (Commit: `fe2ccd1`)
 ### 核心主題：一日模板 24H 時間軸實境拖拽編輯、複數段可支配時間架構、介面精簡
 

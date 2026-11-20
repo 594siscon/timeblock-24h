@@ -407,15 +407,13 @@ button {
 /* ==================== Category Filters & Template Cards (Dock) ==================== */
 .category-filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 10px 14px;
-  overflow-x: auto;
+  overflow: visible;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border-soft);
 }
-
-.category-filters::-webkit-scrollbar { height: 3px; }
-.category-filters::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 999px; }
 
 .cat-filter-pill {
   display: inline-flex;
@@ -2609,17 +2607,72 @@ button {
   }
 
   .app-header {
-    padding: 0 10px;
-    gap: 6px;
+    width: 100%;
+    max-width: 100vw;
+    padding: 0 8px;
+    gap: 4px;
+    overflow: hidden;
   }
 
-  .brand-title {
-    font-size: 14.5px;
+  .header-left, .header-center, .header-right {
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .brand-text {
+    display: none;
+  }
+
+  .brand-logo {
+    width: 28px;
+    height: 28px;
+  }
+
+  .date-nav {
+    padding: 1px;
   }
 
   .date-display-btn {
-    min-width: 96px;
-    padding: 2px 7px;
+    min-width: 78px;
+    padding: 2px 5px;
+    gap: 4px;
+  }
+
+  .date-btn-icon {
+    font-size: 13px;
+  }
+
+  .date-main {
+    font-size: 12.5px;
+  }
+
+  .date-sub {
+    font-size: 9.5px;
+  }
+
+  .icon-btn {
+    width: 29px;
+    height: 29px;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .btn-pill {
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+
+  .zoom-group {
+    padding: 1px;
+  }
+
+  .zoom-btn {
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+
+  .sync-status-btn {
+    padding: 4px 7px;
   }
 
   .sync-btn-text {
@@ -2646,17 +2699,39 @@ button {
 }
 
 @media (max-width: 480px) {
-  .brand-badge {
-    display: none;
+  .app-header {
+    padding: 0 6px;
+    gap: 3px;
+  }
+
+  .header-left, .header-center, .header-right {
+    gap: 3px;
+  }
+
+  #btnToday {
+    padding: 4px 6px;
+    font-size: 10.5px;
   }
 
   .date-display-btn {
-    min-width: 84px;
-    padding: 2px 5px;
+    min-width: 72px;
+    padding: 2px 4px;
+    gap: 3px;
   }
 
-  .date-main { font-size: 12.5px; }
-  .date-sub { font-size: 9.5px; }
+  .date-main { font-size: 12px; }
+  .date-sub { font-size: 9px; }
+
+  .icon-btn {
+    width: 27px;
+    height: 27px;
+    font-size: 14px;
+  }
+
+  .zoom-btn {
+    padding: 3px 5px;
+    font-size: 10.5px;
+  }
 
   .mobile-dock-hint {
     display: none;

@@ -220,9 +220,9 @@
       }
     }
 
-    // Register Service Worker (v2.1.0)
+    // Register Service Worker (v2.1.1)
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
-      navigator.serviceWorker.register('./sw.js?v=2.1.0').then((reg) => {
+      navigator.serviceWorker.register('./sw.js?v=2.1.1').then((reg) => {
         if (reg.waiting) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

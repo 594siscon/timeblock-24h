@@ -1,7 +1,7 @@
 {
-  "name": "時間方塊 v2.1.0 · 24H 時間管理",
+  "name": "時間方塊 v2.1.1 · 24H 時間管理",
   "short_name": "時間方塊",
-  "description": "24小時視覺化時間方塊排程、一日模板時間軸拖拽編輯與複數段可支配時間統計工具 (v2.1.0)",
+  "description": "24小時視覺化時間方塊排程、一日模板時間軸拖拽編輯與複數段可支配時間統計工具 (v2.1.1)",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#F1F5F9",

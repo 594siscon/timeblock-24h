@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-Hant" data-theme="light">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>時間方塊 v2.1.0 · 24H 時間管理</title>
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>時間方塊 v2.1.1 · 24H 時間管理</title>
 
   <!-- PWA & iOS Safari Support -->
   <link rel="manifest" href="./manifest.json?v=2.1.0" />
@@ -14,11 +16,11 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
 
-  <!-- 自動清理舊版 Service Worker 快取，確保 v2.1.0 始終載入最新代碼 -->
+  <!-- 自動清理舊版 Service Worker 快取，確保 v2.1.1 始終載入最新代碼 -->
   <script>
     (function () {
       try {
-        var CURRENT_VER = 'v2.1.0';
+        var CURRENT_VER = 'v2.1.1';
         var savedVer = localStorage.getItem('timeblock_app_version');
         if (savedVer !== CURRENT_VER) {
           localStorage.setItem('timeblock_app_version', CURRENT_VER);
@@ -35,12 +37,13 @@
             });
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     })();
   </script>
 
   <link rel="stylesheet" href="./css/styles.css?v=2.1.0" />
 </head>
+
 <body>
   <div class="app-shell">
     <!-- Top Header -->
@@ -55,16 +58,18 @@
             <span class="brand-badge">24H</span>
           </div>
         </div>
-        <button type="button" class="header-ver-pill desktop-only" id="headerVersionBadge" data-open-version="true" title="點擊查看完整版本紀錄與更新日誌">
+        <button type="button" class="header-ver-pill desktop-only" id="headerVersionBadge" data-open-version="true"
+          title="點擊查看完整版本紀錄與更新日誌">
           <span class="ver-dot"></span>
-          <span class="ver-text" data-version-text>v2.1.0</span>
+          <span class="ver-text" data-version-text>v2.1.1</span>
         </button>
       </div>
 
       <div class="header-center">
         <div class="date-nav">
           <button type="button" class="icon-btn" id="btnPrevDay" title="前一天" aria-label="前一天">‹</button>
-          <button type="button" class="date-display-btn" id="btnDateDisplay" data-open-calendar="true" title="點擊開啟日曆選擇日期" aria-label="開啟日曆">
+          <button type="button" class="date-display-btn" id="btnDateDisplay" data-open-calendar="true"
+            title="點擊開啟日曆選擇日期" aria-label="開啟日曆">
             <span class="date-btn-icon" aria-hidden="true">📅</span>
             <span class="date-btn-text">
               <span class="date-main" id="currentDateLabel">今日</span>
@@ -84,13 +89,16 @@
           <button type="button" class="zoom-btn is-active" data-zoom="60">標準</button>
           <button type="button" class="zoom-btn desktop-only" data-zoom="84">寬鬆</button>
         </div>
-        <button type="button" class="btn-pill desktop-only" id="btnHeaderDayTemplates" data-open-day-templates="true" title="開啟一日活動模板庫">📋 模板</button>
-        <button type="button" class="btn-pill desktop-only" id="btnOpenStatsModalDesktop" data-open-stats="true" title="開啟完整日/週/月統計視窗">📊 統計</button>
+        <button type="button" class="btn-pill desktop-only" id="btnHeaderDayTemplates" data-open-day-templates="true"
+          title="開啟一日活動模板庫">📋 模板</button>
+        <button type="button" class="btn-pill desktop-only" id="btnOpenStatsModalDesktop" data-open-stats="true"
+          title="開啟完整日/週/月統計視窗">📊 統計</button>
         <button type="button" class="sync-status-btn" id="btnSyncModal" title="雲端即時同步設定">
           <span class="sync-dot" id="syncStatusDot"></span>
           <span class="sync-btn-text" id="syncStatusText">雲端同步</span>
         </button>
-        <button type="button" class="icon-btn mobile-only" id="btnMobileStats" data-open-stats="true" title="時間分配統計" aria-label="時間分配統計">📊</button>
+        <button type="button" class="icon-btn mobile-only" id="btnMobileStats" data-open-stats="true" title="時間分配統計"
+          aria-label="時間分配統計">📊</button>
         <button type="button" class="icon-btn" id="btnThemeToggle" title="切換深淺色主題" aria-label="切換深淺色">🌙</button>
       </div>
     </header>
@@ -118,7 +126,7 @@
           <span>💡 <b>點擊方塊</b>可自動排入空檔；<b>拖拽方塊</b>可放置於任意時段；上下拖拉方塊邊緣可每 15 分鐘微調時長。</span>
           <button type="button" class="sidebar-version-tag" data-open-version="true" title="點擊查看版本更新紀錄">
             <span>時間方塊</span>
-            <strong data-version-text>v2.1.0</strong>
+            <strong data-version-text>v2.1.1</strong>
             <span>· 版本紀錄 ›</span>
           </button>
         </div>
@@ -134,16 +142,21 @@
               <span class="tpl-banner-hint">請直接從左側或下方 Dock 拖拽活動方塊到下方 24 小時表排程，或拖動方塊調整時間</span>
             </div>
             <div class="tpl-banner-actions">
-              <button type="button" class="btn-xs-secondary" id="btnTplBannerLoadToday" title="將當日排程複製到此模板">📋 帶入當日排程</button>
-              <button type="button" class="btn-xs-secondary is-danger-text" id="btnTplBannerClear" title="清空目前模板上的所有方塊">🗑️ 清空</button>
+              <button type="button" class="btn-xs-secondary" id="btnTplBannerLoadToday" title="將當日排程複製到此模板">📋
+                帶入當日排程</button>
+              <button type="button" class="btn-xs-secondary is-danger-text" id="btnTplBannerClear"
+                title="清空目前模板上的所有方塊">🗑️ 清空</button>
               <button type="button" class="btn-xs-secondary" id="btnTplBannerCancel">✕ 退出</button>
               <button type="button" class="btn-sm-primary" id="btnTplBannerSave">💾 儲存模板</button>
             </div>
           </div>
           <div class="tpl-banner-fields">
-            <input type="text" id="tplBannerIconInput" class="tpl-banner-icon-input" maxlength="4" value="📅" title="模板圖示" aria-label="模板圖示" />
-            <input type="text" id="tplBannerNameInput" class="tpl-banner-name-input" placeholder="輸入一日模板名稱（例如：常規工作日）..." aria-label="模板名稱" />
-            <input type="text" id="tplBannerDescInput" class="tpl-banner-desc-input" placeholder="模板備註說明（選填）..." aria-label="模板說明" />
+            <input type="text" id="tplBannerIconInput" class="tpl-banner-icon-input" maxlength="4" value="📅"
+              title="模板圖示" aria-label="模板圖示" />
+            <input type="text" id="tplBannerNameInput" class="tpl-banner-name-input" placeholder="輸入一日模板名稱（例如：常規工作日）..."
+              aria-label="模板名稱" />
+            <input type="text" id="tplBannerDescInput" class="tpl-banner-desc-input" placeholder="模板備註說明（選填）..."
+              aria-label="模板說明" />
             <span class="tpl-banner-count" id="tplBannerCountBadge">0 項時段 · 0h</span>
           </div>
         </div>
@@ -172,7 +185,8 @@
             <p class="panel-hint" id="statsDesktopSubHeading">全天 24 小時與可支配時間分析</p>
           </div>
           <div class="panel-header-actions">
-            <button type="button" class="icon-btn-sm" id="btnExpandStats" data-open-stats="true" title="展開大型統計報表視窗" aria-label="展開統計">⤢</button>
+            <button type="button" class="icon-btn-sm" id="btnExpandStats" data-open-stats="true" title="展開大型統計報表視窗"
+              aria-label="展開統計">⤢</button>
           </div>
         </div>
 
@@ -181,7 +195,8 @@
         <div class="tools-section">
           <h3 class="tools-heading">一日模板與快捷排程</h3>
           <div class="tools-grid">
-            <button type="button" class="tool-btn" id="btnOpenDayTemplates" data-open-day-templates="true">📋 一日活動模板庫（套用 / 拖拽編輯）</button>
+            <button type="button" class="tool-btn" id="btnOpenDayTemplates" data-open-day-templates="true">📋 一日活動模板庫（套用
+              / 拖拽編輯）</button>
             <button type="button" class="tool-btn" id="btnCopyYesterday">⏮️ 複製昨日排程到今天</button>
             <button type="button" class="tool-btn is-danger-text" id="btnClearDay">🗑️ 清空目前時間表</button>
           </div>
@@ -190,7 +205,8 @@
           <div class="tools-grid">
             <button type="button" class="tool-btn" id="btnExportData">⬇️ 匯出 JSON 備份檔</button>
             <button type="button" class="tool-btn" id="btnImportData">⬆️ 匯入 JSON 備份檔</button>
-            <button type="button" class="tool-btn" data-open-version="true">📜 版本更新紀錄 (<span data-version-text>v2.1.0</span>)</button>
+            <button type="button" class="tool-btn" data-open-version="true">📜 版本更新紀錄 (<span
+                data-version-text>v2.1.1</span>)</button>
             <input type="file" id="importFileInput" accept="application/json" hidden />
           </div>
         </div>
@@ -202,10 +218,12 @@
       <div class="mobile-dock-bar">
         <span class="mobile-dock-hint">👆 點擊或上拖方塊排入時間表</span>
         <div class="mobile-dock-actions">
-          <button type="button" class="btn-xs-secondary" id="btnDockDayTemplates" data-open-day-templates="true" title="一日活動模板">📋 模板</button>
+          <button type="button" class="btn-xs-secondary" id="btnDockDayTemplates" data-open-day-templates="true"
+            title="一日活動模板">📋 模板</button>
           <button type="button" class="btn-xs-secondary" data-open-categories="true" title="管理活動類別">🏷️ 類別</button>
           <button type="button" class="btn-xs-primary" data-add-template="true" title="新增活動方塊">＋ 新增</button>
-          <button type="button" class="btn-xs-secondary" id="btnOpenMobileDrawer" data-open-drawer="true" title="展開全部方塊庫">展開 ▲</button>
+          <button type="button" class="btn-xs-secondary" id="btnOpenMobileDrawer" data-open-drawer="true"
+            title="展開全部方塊庫">展開 ▲</button>
         </div>
       </div>
       <div class="mobile-dock-scroll" id="mobileDockList"></div>
@@ -221,16 +239,18 @@
           <p class="panel-hint">點擊方塊直接加入時間表，或按住拖曳</p>
         </div>
         <div class="panel-header-actions">
-          <button type="button" class="btn-sm-secondary" id="btnDrawerDayTemplates" data-open-day-templates="true">📋 一日模板</button>
+          <button type="button" class="btn-sm-secondary" id="btnDrawerDayTemplates" data-open-day-templates="true">📋
+            一日模板</button>
           <button type="button" class="btn-sm-secondary" data-open-categories="true">🏷️ 類別</button>
           <button type="button" class="btn-sm-primary" data-add-template="true">＋ 新增</button>
-          <button type="button" class="icon-btn-sm" id="btnCloseMobileDrawer" data-close-drawer="true" aria-label="關閉">✕</button>
+          <button type="button" class="icon-btn-sm" id="btnCloseMobileDrawer" data-close-drawer="true"
+            aria-label="關閉">✕</button>
         </div>
       </div>
       <div class="category-filters" id="categoryFiltersMobile"></div>
       <div class="template-list drawer-template-list" id="templateListMobile"></div>
       <button type="button" class="drawer-version-tag" data-open-version="true">
-        時間方塊 <span data-version-text>v2.1.0</span> · 點擊查看詳細版本紀錄
+        時間方塊 <span data-version-text>v2.1.1</span> · 點擊查看詳細版本紀錄
       </button>
     </div>
   </div>
@@ -243,10 +263,11 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <!-- Corner Version Badge (Always visible in bottom-right corner) -->
-  <button type="button" class="corner-version-badge" id="cornerVersionBadge" data-open-version="true" title="時間方塊 v2.1.0 · 點擊開啟詳細版本紀錄">
+  <button type="button" class="corner-version-badge" id="cornerVersionBadge" data-open-version="true"
+    title="時間方塊 v2.1.1 · 點擊開啟詳細版本紀錄">
     <span class="version-dot" aria-hidden="true"></span>
     <span class="version-label">時間方塊</span>
-    <span class="version-code" data-version-text>v2.1.0</span>
+    <span class="version-code" data-version-text>v2.1.1</span>
   </button>
 
   <!-- ==================== MODALS (Pure CSS .is-open controlled) ==================== -->
@@ -404,7 +425,8 @@
           <button type="button" class="tool-btn" data-mobile-tool="btnOpenDayTemplates">📋 一日活動模板庫</button>
           <button type="button" class="tool-btn" data-mobile-tool="btnCopyYesterday">⏮️ 複製昨日排程</button>
           <button type="button" class="tool-btn" data-mobile-tool="btnExportData">⬇️ 匯出 JSON 備份</button>
-          <button type="button" class="tool-btn" data-open-version="true">📜 版本紀錄 (<span data-version-text>v2.1.0</span>)</button>
+          <button type="button" class="tool-btn" data-open-version="true">📜 版本紀錄 (<span
+              data-version-text>v2.1.1</span>)</button>
           <button type="button" class="tool-btn is-danger-text" data-mobile-tool="btnClearDay">🗑️ 清空當日排程</button>
         </div>
       </div>
@@ -449,10 +471,14 @@
         <div id="syncAuthPanel">
           <button type="button" class="btn-google" id="btnSyncGoogle">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-              <path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.0 24.0 0 0 0 0 21.56l7.98-6.19z"/>
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              <path fill="#EA4335"
+                d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+              <path fill="#4285F4"
+                d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+              <path fill="#FBBC05"
+                d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.0 24.0 0 0 0 0 21.56l7.98-6.19z" />
+              <path fill="#34A853"
+                d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
             </svg>
             <span>使用 Google 帳號登入並即時同步</span>
           </button>
@@ -462,11 +488,13 @@
             <form id="syncEmailForm" class="sync-auth-form">
               <div class="form-group">
                 <label class="form-label" for="syncEmailInput">電子郵件（Email）</label>
-                <input type="email" id="syncEmailInput" class="form-input" placeholder="you@example.com" autocomplete="email" required />
+                <input type="email" id="syncEmailInput" class="form-input" placeholder="you@example.com"
+                  autocomplete="email" required />
               </div>
               <div class="form-group">
                 <label class="form-label" for="syncPasswordInput">密碼（至少 6 碼）</label>
-                <input type="password" id="syncPasswordInput" class="form-input" placeholder="請輸入密碼" minlength="6" autocomplete="current-password" required />
+                <input type="password" id="syncPasswordInput" class="form-input" placeholder="請輸入密碼" minlength="6"
+                  autocomplete="current-password" required />
               </div>
               <div class="sync-auth-btns">
                 <button type="submit" class="btn-primary flex-1" id="btnSyncEmailIn">Email 登入</button>
@@ -485,7 +513,8 @@
           <form id="syncConfigForm" class="sync-config-form">
             <div class="form-group">
               <label class="form-label" for="fbConfigInput">貼上 Firebase 的 firebaseConfig 程式碼或 JSON</label>
-              <textarea id="fbConfigInput" class="form-textarea" rows="5" placeholder='const firebaseConfig = { apiKey: "...", projectId: "..." };' required></textarea>
+              <textarea id="fbConfigInput" class="form-textarea" rows="5"
+                placeholder='const firebaseConfig = { apiKey: "...", projectId: "..." };' required></textarea>
             </div>
             <button type="submit" class="btn-secondary">儲存 Firebase 設定</button>
           </form>
@@ -496,7 +525,8 @@
 
   <!-- Modal 6: Calendar Month Picker (電腦與手機共用直覺日曆) -->
   <div class="modal-backdrop" id="calendarModal">
-    <div class="modal-card modal-card-sm calendar-modal-card" role="dialog" aria-modal="true" aria-labelledby="calendarModalMonthLabel">
+    <div class="modal-card modal-card-sm calendar-modal-card" role="dialog" aria-modal="true"
+      aria-labelledby="calendarModalMonthLabel">
       <div class="modal-header">
         <div class="cal-nav">
           <button type="button" class="icon-btn-sm" id="calPrevMonth" title="上個月" aria-label="上個月">‹</button>
@@ -553,7 +583,7 @@
           <div class="version-hero-left">
             <div class="version-hero-badge">
               <span class="version-dot"></span>
-              <span id="versionHeroCode" data-version-text>v2.1.0</span>
+              <span id="versionHeroCode" data-version-text>v2.1.1</span>
             </div>
             <div class="version-hero-meta">
               <strong id="versionHeroName">時間方塊 (TimeBlock 24H)</strong>
@@ -577,7 +607,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
-  <!-- Application Scripts (v2.1.0 Cache-Busted) -->
+  <!-- Application Scripts (v2.1.1 Cache-Busted) -->
   <script src="./js/utils.js?v=2.1.0"></script>
   <script src="./js/store.js?v=2.1.0"></script>
   <script src="./js/sync-config.js?v=2.1.0"></script>
@@ -587,4 +617,5 @@
   <script src="./js/ui.js?v=2.1.0"></script>
   <script src="./js/app.js?v=2.1.0"></script>
 </body>
+
 </html>
