@@ -13,7 +13,6 @@
     DEFAULT_DURATION
   } = TF.utils;
 
-  // 全新 v2 獨立儲存空間，完全不受舊版殘留資料影響
   const STORAGE_KEY = 'timeblock_24h_v2_data';
 
   const PRESET_COLORS = [
@@ -102,6 +101,11 @@
     }
   ];
 
+  const DEFAULT_DISCRETIONARY_WINDOWS = [
+    { id: 'dw_morning', start: 420, end: 510 }, // 07:00 - 08:30 晨間可支配
+    { id: 'dw_evening', start: 1140, end: 1380 } // 19:00 - 23:00 晚間可支配
+  ];
+
   function buildInitialSampleBlocks(todayKey) {
     return {
       [todayKey]: [
@@ -111,7 +115,7 @@
           title: '睡眠時間',
           categoryId: 'cat_rest',
           startMinutes: 0,
-          durationMinutes: 420, // 00:00 - 07:00
+          durationMinutes: 420,
           note: '規律作息'
         },
         {
@@ -119,7 +123,7 @@
           date: todayKey,
           title: '早餐與晨間準備',
           categoryId: 'cat_life',
-          startMinutes: 450, // 07:30 - 08:30
+          startMinutes: 450,
           durationMinutes: 60,
           note: ''
         },
@@ -128,7 +132,7 @@
           date: todayKey,
           title: '深度工作',
           categoryId: 'cat_work',
-          startMinutes: 540, // 09:00 - 12:00
+          startMinutes: 540,
           durationMinutes: 180,
           note: '專注完成今日核心目標'
         },
@@ -137,7 +141,7 @@
           date: todayKey,
           title: '午餐與午休',
           categoryId: 'cat_life',
-          startMinutes: 720, // 12:00 - 13:30
+          startMinutes: 720,
           durationMinutes: 90,
           note: ''
         },
@@ -146,7 +150,7 @@
           date: todayKey,
           title: '專案推進與會議',
           categoryId: 'cat_work',
-          startMinutes: 810, // 13:30 - 17:30
+          startMinutes: 810,
           durationMinutes: 240,
           note: ''
         },
@@ -155,7 +159,7 @@
           date: todayKey,
           title: '運動健身',
           categoryId: 'cat_sport',
-          startMinutes: 1110, // 18:30 - 19:30
+          startMinutes: 1140,
           durationMinutes: 60,
           note: ''
         },
@@ -164,7 +168,7 @@
           date: todayKey,
           title: '閱讀學習',
           categoryId: 'cat_study',
-          startMinutes: 1200, // 20:00 - 21:30
+          startMinutes: 1200,
           durationMinutes: 90,
           note: '晚間可支配時間自我提升'
         }
@@ -179,8 +183,15 @@
       this.selectedDate = toDateKey(new Date());
       this.selectedCategoryFilter = 'all';
       this.selectedBlockId = null;
+
+      /**
+       * 一日模板「時間軸拖拽編輯模式」狀態
+       * 當不為 null 時，24H 時間軸與 Dock 拖拽會直接操作此模板的 blocks！
+       * 格式: { id: string|null, name: string, icon: string, description: string, blocks: Array }
+       */
+      this.editingDayTemplate = null;
+
       this.state = this.load();
-      // 確保 state.selectedDate 與 store.selectedDate 永遠同步，杜絕 undefined
       this.state.selectedDate = this.selectedDate;
     }
 
@@ -200,10 +211,25 @@
           hourHeight: 60,
           statsScope: 'day', // 'day' | 'week' | 'month'
           statsMode: 'daily', // 'daily' | 'discretionary'
-          discretionaryStart: 1140, // 19:00
-          discretionaryEnd: 1380 // 23:00
+          discretionaryWindows: DEFAULT_DISCRETIONARY_WINDOWS.map((w) => ({ ...w }))
         }
       };
+    }
+
+    normalizeDiscretionaryWindows(settings) {
+      if (Array.isArray(settings?.discretionaryWindows) && settings.discretionaryWindows.length > 0) {
+        return settings.discretionaryWindows.map((w, idx) => {
+          const s = clamp(snapMinutes(Number(w.start) || 0), 0, MINUTES_PER_DAY - SNAP_MINUTES);
+          const e = clamp(snapMinutes(Number(w.end) || (s + 60)), s + SNAP_MINUTES, MINUTES_PER_DAY);
+          return { id: w.id || uid(`dw_${idx}`), start: s, end: e };
+        });
+      }
+      if (settings?.discretionaryStart !== undefined && settings?.discretionaryEnd !== undefined) {
+        const s = clamp(snapMinutes(Number(settings.discretionaryStart)), 0, MINUTES_PER_DAY - SNAP_MINUTES);
+        const e = clamp(snapMinutes(Number(settings.discretionaryEnd)), s + SNAP_MINUTES, MINUTES_PER_DAY);
+        return [{ id: uid('dw'), start: s, end: e }];
+      }
+      return DEFAULT_DISCRETIONARY_WINDOWS.map((w) => ({ ...w }));
     }
 
     load() {
@@ -225,8 +251,7 @@
                 hourHeight: parsed.settings?.hourHeight ?? 60,
                 statsScope: parsed.settings?.statsScope || 'day',
                 statsMode: parsed.settings?.statsMode || 'daily',
-                discretionaryStart: parsed.settings?.discretionaryStart ?? 1140,
-                discretionaryEnd: parsed.settings?.discretionaryEnd ?? 1380
+                discretionaryWindows: this.normalizeDiscretionaryWindows(parsed.settings)
               }
             };
           }
@@ -252,6 +277,7 @@
       this.selectedDate = toDateKey(new Date());
       this.selectedCategoryFilter = 'all';
       this.selectedBlockId = null;
+      this.editingDayTemplate = null;
       this.undoStack = [];
       this.state = this.getDefaultState();
       this.save(this.state);
@@ -276,6 +302,7 @@
     }
 
     pushUndo(label) {
+      if (this.editingDayTemplate) return; // 模板拖拽編輯中不影響日常排程 undo
       const snapshot = JSON.stringify({
         categories: this.state.categories,
         templates: this.state.templates,
@@ -302,7 +329,132 @@
       }
     }
 
-    // --- Date & Settings ---
+    // ==================== 一日模板「24H 時間軸拖拽編輯模式」 ====================
+    isEditingDayTemplate() {
+      return Boolean(this.editingDayTemplate);
+    }
+
+    getEditingDayTemplate() {
+      return this.editingDayTemplate;
+    }
+
+    /**
+     * 進入一日模板的 24H 時間表實境拖拽編輯模式
+     * @param {string|null} tplId 若傳入既有模板 ID 則編輯該模板，否則建立新模板
+     * @param {'blank'|'today'} initMode 新模板的初始內容來源
+     */
+    startEditingDayTemplate(tplId = null, initMode = 'blank') {
+      if (tplId) {
+        const tpl = this.getDayTemplateById(tplId);
+        if (!tpl) return null;
+        this.editingDayTemplate = {
+          id: tpl.id,
+          name: tpl.name,
+          icon: tpl.icon || '📅',
+          description: tpl.description || '',
+          blocks: (tpl.blocks || []).map((b) => ({
+            id: b.id || uid('tblk'),
+            title: b.title || '未命名活動',
+            categoryId: this.getCategoryById(b.categoryId).id,
+            startMinutes: clamp(snapMinutes(b.startMinutes ?? 0), 0, MINUTES_PER_DAY - SNAP_MINUTES),
+            durationMinutes: clamp(snapMinutes(b.durationMinutes ?? DEFAULT_DURATION), SNAP_MINUTES, MINUTES_PER_DAY),
+            note: b.note || ''
+          }))
+        };
+      } else {
+        const sourceBlocks = initMode === 'today'
+          ? (this.state.blocksByDate[this.selectedDate] || []).map((b) => ({
+              id: uid('tblk'),
+              title: b.title,
+              categoryId: b.categoryId,
+              startMinutes: b.startMinutes,
+              durationMinutes: b.durationMinutes,
+              note: b.note || ''
+            }))
+          : [];
+        this.editingDayTemplate = {
+          id: null,
+          name: initMode === 'today' ? '我的自訂日常模板' : '新建一日模板',
+          icon: '📅',
+          description: '',
+          blocks: sourceBlocks
+        };
+      }
+      this.selectedBlockId = null;
+      this.notify('template-edit-mode');
+      return this.editingDayTemplate;
+    }
+
+    updateEditingDayTemplateMeta(patch = {}) {
+      if (!this.editingDayTemplate) return;
+      if (patch.name !== undefined) this.editingDayTemplate.name = patch.name;
+      if (patch.icon !== undefined) this.editingDayTemplate.icon = patch.icon;
+      if (patch.description !== undefined) this.editingDayTemplate.description = patch.description;
+    }
+
+    loadCurrentDayIntoEditingTemplate() {
+      if (!this.editingDayTemplate) return 0;
+      const dayBlocks = this.state.blocksByDate[this.selectedDate] || [];
+      this.editingDayTemplate.blocks = dayBlocks.map((b) => ({
+        id: uid('tblk'),
+        title: b.title,
+        categoryId: b.categoryId,
+        startMinutes: b.startMinutes,
+        durationMinutes: b.durationMinutes,
+        note: b.note || ''
+      }));
+      this.selectedBlockId = null;
+      this.notify('blocks');
+      return this.editingDayTemplate.blocks.length;
+    }
+
+    saveEditingDayTemplate({ name, icon, description } = {}) {
+      if (!this.editingDayTemplate) return null;
+      const finalName = (name !== undefined ? name : this.editingDayTemplate.name).trim() || '自訂一日模板';
+      const finalIcon = (icon !== undefined ? icon : this.editingDayTemplate.icon).trim() || '📅';
+      const cleanBlocks = [...this.editingDayTemplate.blocks]
+        .sort((a, b) => a.startMinutes - b.startMinutes)
+        .map((b) => ({
+          title: (b.title || '未命名活動').trim(),
+          categoryId: b.categoryId || this.state.categories[0]?.id,
+          startMinutes: clamp(snapMinutes(b.startMinutes), 0, MINUTES_PER_DAY - SNAP_MINUTES),
+          durationMinutes: clamp(snapMinutes(b.durationMinutes), SNAP_MINUTES, MINUTES_PER_DAY),
+          note: (b.note || '').trim()
+        }));
+      const finalDesc = (description !== undefined ? description : this.editingDayTemplate.description).trim()
+        || `包含 ${cleanBlocks.length} 項活動安排`;
+
+      let saved = null;
+      if (this.editingDayTemplate.id) {
+        saved = this.updateDayTemplate(this.editingDayTemplate.id, {
+          name: finalName,
+          icon: finalIcon,
+          description: finalDesc,
+          blocks: cleanBlocks
+        });
+      } else {
+        saved = this.createDayTemplate({
+          name: finalName,
+          icon: finalIcon,
+          description: finalDesc,
+          blocks: cleanBlocks
+        });
+      }
+
+      this.editingDayTemplate = null;
+      this.selectedBlockId = null;
+      this.notify('template-edit-mode');
+      return saved;
+    }
+
+    cancelEditingDayTemplate() {
+      if (!this.editingDayTemplate) return;
+      this.editingDayTemplate = null;
+      this.selectedBlockId = null;
+      this.notify('template-edit-mode');
+    }
+
+    // ==================== Date & Settings ====================
     setDate(dateKey) {
       if (!dateKey || typeof dateKey !== 'string') return;
       this.selectedDate = dateKey;
@@ -348,12 +500,54 @@
       this.notify('settings');
     }
 
-    setDiscretionaryWindow(startMins, endMins) {
+    // --- 複數段可支配時間（Multiple Discretionary Time Windows） ---
+    getDiscretionaryWindows() {
+      this.state.settings.discretionaryWindows = this.normalizeDiscretionaryWindows(this.state.settings);
+      return [...this.state.settings.discretionaryWindows];
+    }
+
+    addDiscretionaryWindow() {
+      const windows = this.getDiscretionaryWindows();
+      // 智慧決定新時段起訖時間
+      let nextStart = 720; // 12:00
+      let nextEnd = 810;   // 13:30
+      if (windows.length > 0) {
+        const sorted = [...windows].sort((a, b) => a.start - b.start);
+        const last = sorted[sorted.length - 1];
+        if (last.end + 90 <= MINUTES_PER_DAY) {
+          nextStart = last.end + 30;
+          nextEnd = Math.min(MINUTES_PER_DAY, nextStart + 90);
+        } else if (sorted[0].start >= 120) {
+          nextStart = Math.max(0, sorted[0].start - 120);
+          nextEnd = sorted[0].start - 30;
+        }
+      }
+      windows.push({
+        id: uid('dw'),
+        start: snapMinutes(nextStart),
+        end: snapMinutes(Math.max(nextStart + 30, nextEnd))
+      });
+      this.state.settings.discretionaryWindows = windows;
+      this.notify('settings');
+    }
+
+    updateDiscretionaryWindow(id, startMins, endMins) {
+      const windows = this.getDiscretionaryWindows();
+      const idx = windows.findIndex((w) => w.id === id);
+      if (idx === -1) return;
       const s = clamp(snapMinutes(startMins), 0, MINUTES_PER_DAY - SNAP_MINUTES);
       const e = clamp(snapMinutes(endMins), s + SNAP_MINUTES, MINUTES_PER_DAY);
-      this.state.settings.discretionaryStart = s;
-      this.state.settings.discretionaryEnd = e;
+      windows[idx] = { ...windows[idx], start: s, end: e };
+      this.state.settings.discretionaryWindows = windows;
       this.notify('settings');
+    }
+
+    removeDiscretionaryWindow(id) {
+      const windows = this.getDiscretionaryWindows();
+      if (windows.length <= 1) return false;
+      this.state.settings.discretionaryWindows = windows.filter((w) => w.id !== id);
+      this.notify('settings');
+      return true;
     }
 
     hasEventsOnDate(dateKey) {
@@ -528,6 +722,9 @@
       if (idx === -1) return false;
       this.pushUndo('刪除一日模板');
       this.state.dayTemplates.splice(idx, 1);
+      if (this.editingDayTemplate && this.editingDayTemplate.id === id) {
+        this.editingDayTemplate = null;
+      }
       this.notify('dayTemplates');
       return true;
     }
@@ -554,7 +751,7 @@
       if (overwrite) {
         this.state.blocksByDate[this.selectedDate] = newBlocks;
       } else {
-        const existing = this.getBlocks(this.selectedDate);
+        const existing = this.state.blocksByDate[this.selectedDate] || [];
         this.state.blocksByDate[this.selectedDate] = [...existing, ...newBlocks];
       }
 
@@ -563,23 +760,56 @@
       return newBlocks.length;
     }
 
-    // --- Time Blocks on 24H Timeline ---
-    getBlocks(dateKey = this.selectedDate) {
+    // ==================== Time Blocks on 24H Timeline (支援日常排程與模板拖拽編輯雙模式) ====================
+    /**
+     * 取得指定日期的日常排程（供日/週/月統計使用，不受模板編輯模式影響）
+     */
+    getDayBlocksForStats(dateKey) {
       const list = this.state.blocksByDate[dateKey] || [];
       return [...list].sort((a, b) => a.startMinutes - b.startMinutes);
     }
 
+    /**
+     * 取得當前時間軸要顯示的方塊（若處於模板拖拽編輯模式，回傳模板方塊；否則回傳當日方塊）
+     */
+    getBlocks(dateKey) {
+      if (this.editingDayTemplate && (!dateKey || dateKey === this.selectedDate)) {
+        return [...this.editingDayTemplate.blocks].sort((a, b) => a.startMinutes - b.startMinutes);
+      }
+      const targetKey = dateKey || this.selectedDate;
+      const list = this.state.blocksByDate[targetKey] || [];
+      return [...list].sort((a, b) => a.startMinutes - b.startMinutes);
+    }
+
     getBlockById(blockId, dateKey = this.selectedDate) {
+      if (this.editingDayTemplate) {
+        return this.editingDayTemplate.blocks.find((b) => b.id === blockId) || null;
+      }
       const list = this.state.blocksByDate[dateKey] || [];
       return list.find((b) => b.id === blockId) || null;
     }
 
     addBlock({ title, categoryId, startMinutes, durationMinutes = DEFAULT_DURATION, note = '', dateKey = this.selectedDate }) {
-      this.pushUndo('排入活動');
       const start = clamp(snapMinutes(startMinutes), 0, MINUTES_PER_DAY - SNAP_MINUTES);
       const maxDur = MINUTES_PER_DAY - start;
       const duration = clamp(snapMinutes(durationMinutes), SNAP_MINUTES, maxDur);
 
+      if (this.editingDayTemplate) {
+        const tplBlock = {
+          id: uid('tblk'),
+          title: (title || '未命名活動').trim(),
+          categoryId: categoryId || this.state.categories[0]?.id,
+          startMinutes: start,
+          durationMinutes: duration,
+          note: (note || '').trim()
+        };
+        this.editingDayTemplate.blocks.push(tplBlock);
+        this.selectedBlockId = tplBlock.id;
+        this.notify('blocks');
+        return tplBlock;
+      }
+
+      this.pushUndo('排入活動');
       const block = {
         id: uid('blk'),
         date: dateKey,
@@ -600,12 +830,14 @@
     }
 
     updateBlock(blockId, patch, dateKey = this.selectedDate) {
-      const list = this.state.blocksByDate[dateKey];
+      const list = this.editingDayTemplate
+        ? this.editingDayTemplate.blocks
+        : this.state.blocksByDate[dateKey];
       if (!list) return null;
       const idx = list.findIndex((b) => b.id === blockId);
       if (idx === -1) return null;
 
-      this.pushUndo('修改活動');
+      if (!this.editingDayTemplate) this.pushUndo('修改活動');
       const current = list[idx];
       let nextStart = patch.startMinutes !== undefined ? snapMinutes(patch.startMinutes) : current.startMinutes;
       let nextDuration = patch.durationMinutes !== undefined ? snapMinutes(patch.durationMinutes) : current.durationMinutes;
@@ -625,12 +857,14 @@
     }
 
     deleteBlock(blockId, dateKey = this.selectedDate) {
-      const list = this.state.blocksByDate[dateKey];
+      const list = this.editingDayTemplate
+        ? this.editingDayTemplate.blocks
+        : this.state.blocksByDate[dateKey];
       if (!list) return false;
       const idx = list.findIndex((b) => b.id === blockId);
       if (idx === -1) return false;
 
-      this.pushUndo('刪除活動');
+      if (!this.editingDayTemplate) this.pushUndo('刪除活動');
       list.splice(idx, 1);
       if (this.selectedBlockId === blockId) this.selectedBlockId = null;
       this.notify('blocks');
@@ -653,8 +887,17 @@
 
     copyYesterdayToCurrent() {
       const yesterdayKey = addDays(this.selectedDate, -1);
-      const prevBlocks = this.getBlocks(yesterdayKey);
+      const prevBlocks = this.state.blocksByDate[yesterdayKey] || [];
       if (prevBlocks.length === 0) return 0;
+
+      if (this.editingDayTemplate) {
+        this.editingDayTemplate.blocks = prevBlocks.map((b) => ({
+          ...b,
+          id: uid('tblk')
+        }));
+        this.notify('blocks');
+        return prevBlocks.length;
+      }
 
       this.pushUndo('複製昨日排程');
       this.state.blocksByDate[this.selectedDate] = prevBlocks.map((b) => ({
@@ -667,6 +910,13 @@
     }
 
     clearCurrentDay() {
+      if (this.editingDayTemplate) {
+        const len = this.editingDayTemplate.blocks.length;
+        this.editingDayTemplate.blocks = [];
+        this.selectedBlockId = null;
+        this.notify('blocks');
+        return len;
+      }
       const list = this.state.blocksByDate[this.selectedDate] || [];
       if (list.length === 0) return 0;
       this.pushUndo('清空當日排程');
@@ -699,7 +949,11 @@
       }
       this.state.blocksByDate = parsed.blocksByDate || {};
       if (parsed.settings) {
-        this.state.settings = { ...this.state.settings, ...parsed.settings };
+        this.state.settings = {
+          ...this.state.settings,
+          ...parsed.settings,
+          discretionaryWindows: this.normalizeDiscretionaryWindows(parsed.settings)
+        };
       }
       this.selectedBlockId = null;
       this.notify('import');

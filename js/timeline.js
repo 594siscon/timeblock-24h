@@ -114,6 +114,10 @@
 
     updateNowLine() {
       if (!this.nowLineEl || !this.nowLabelEl) return;
+      if (TF.store.isEditingDayTemplate?.()) {
+        this.nowLineEl.hidden = true;
+        return;
+      }
       const todayKey = toDateKey(new Date());
       const isToday = TF.store.selectedDate === todayKey;
       if (!isToday) {

@@ -5,7 +5,7 @@
   global.TimeBlock = TF;
 
   const APP_NAME = '時間方塊';
-  const APP_VERSION = 'v2.0.0';
+  const APP_VERSION = 'v2.1.0';
   const APP_BUILD_DATE = '2026-11-20';
   const MINUTES_PER_DAY = 1440;
   const SNAP_MINUTES = 15;
@@ -17,19 +17,30 @@
    */
   const VERSION_HISTORY = [
     {
+      version: 'v2.1.0',
+      date: '2026-11-20',
+      tag: '最新正式版',
+      isCurrent: true,
+      title: '模板 24H 時間軸拖拽編輯、複數可支配時段與介面精簡美化',
+      changes: [
+        '一日模板支援「24H 時間軸實境拖拽編輯模式」：可像平時編輯時間列表一樣，直接從 Dock 拖拽活動方塊、拉動邊緣調整時長',
+        '可支配時間升級支援「複數段時間」自由組合（可新增、修改、刪除多段時段並自動合併重疊區間），移除舊有預設按鈕晶片',
+        '刪除作用重複的「選日期」按鈕，統一由頂部日期導覽列開啟日曆，畫面更純粹',
+        '全面整理與美化電腦版三欄與手機版底部 Dock 排版、字距與卡片視覺層次'
+      ]
+    },
+    {
       version: 'v2.0.0',
       date: '2026-11-20',
       tag: '全新重構版',
-      isCurrent: true,
+      isCurrent: false,
       title: '時間方塊 2.0 全新架構重做與完整版本紀錄系統',
       changes: [
-        '全新打造全域事件委派（Event Delegation）架構，電腦版與手機版日曆、底部 Dock 100% 零延遲響應',
-        '全新純淨 Modal 視窗引擎：關閉時完全脫離渲染樹（display: none），徹底根除透明遮罩阻擋點擊問題',
-        '新增「版本紀錄與系統資訊」專屬面板，詳細記錄歷代版本號、更新內容與快取狀態',
-        '一日活動模板編輯器採用與主時間表完全一致的「活動方塊編輯介面」，支援時段清單直覺增刪改',
-        '完整實作「日 / 週 / 月」三週期統計，並區分「全天 24H」與「自訂可支配時間」雙維度分析',
-        '電腦版與手機版活動方塊庫全面支援「輕點即智慧排入時間表」與「拖曳放置」雙模式',
-        '啟用全新獨立資料儲存區（timeblock_24h_v2_data）與自動清理舊版 Service Worker 快取機制'
+        '全新打造全域事件委派（Event Delegation）架構，日曆與 Dock 100% 零延遲響應',
+        '全新純淨 Modal 視窗引擎：關閉時完全脫離渲染樹（display: none），根除透明遮罩阻擋點擊問題',
+        '新增「版本紀錄與系統資訊」專屬面板，詳細記錄歷代版本號與更新內容',
+        '完整實作「日 / 週 / 月」三週期統計，區分「全天 24H」與「可支配時間」雙維度分析',
+        '電腦版與手機版活動方塊庫全面支援「輕點即智慧排入時間表」與「拖曳放置」雙模式'
       ]
     },
     {
@@ -39,7 +50,7 @@
       isCurrent: false,
       title: '一日模板時段編輯升級與觸控交互修正',
       changes: [
-        '升級一日模板編輯介面，支援以時間列表方式管理模板內的各個活動時段',
+        '升級一日模板編輯介面，支援管理模板內的各個活動時段',
         '新增活動方塊點擊智慧排入（Smart Click-to-Add）功能',
         '調整行動版響應式標頭與底部 Dock 操作列排版'
       ]
@@ -64,7 +75,7 @@
       title: '新增一日活動模板、可支配時間統計、手機日曆與 24H 全覽',
       changes: [
         '新增一日活動模板庫（常規工作日、週末充電日），支援一鍵套入新的一天',
-        '統計面板分為「全天 24 小時」與「可支配時間（自訂時段）」',
+        '統計面板分為「全天 24 小時」與「可支配時間」',
         '新增手機與電腦共用的月份日曆選擇器，並支援時間軸「全覽（Fit 24H）」模式'
       ]
     },
@@ -224,6 +235,39 @@
   }
 
   /**
+   * 將複數段可支配時間區間合併（消除重疊部分），以便精準計算總長度與交集
+   * @param {Array<{start: number, end: number}>} windows
+   * @returns {Array<{start: number, end: number}>}
+   */
+  function mergeTimeIntervals(windows) {
+    if (!Array.isArray(windows) || windows.length === 0) {
+      return [{ start: 1140, end: 1380 }];
+    }
+    const valid = windows
+      .map((w) => {
+        const s = clamp(Number(w.start) || 0, 0, MINUTES_PER_DAY - SNAP_MINUTES);
+        const e = clamp(Number(w.end) || (s + 60), s + SNAP_MINUTES, MINUTES_PER_DAY);
+        return { start: s, end: e };
+      })
+      .filter((w) => w.end > w.start)
+      .sort((a, b) => a.start - b.start);
+
+    if (valid.length === 0) return [{ start: 1140, end: 1380 }];
+
+    const merged = [valid[0]];
+    for (let i = 1; i < valid.length; i++) {
+      const prev = merged[merged.length - 1];
+      const cur = valid[i];
+      if (cur.start <= prev.end) {
+        prev.end = Math.max(prev.end, cur.end);
+      } else {
+        merged.push({ ...cur });
+      }
+    }
+    return merged;
+  }
+
+  /**
    * 計算重疊時間方塊的並排欄位（Side-by-side layout）
    */
   function computeBlockLayout(blocks) {
@@ -308,6 +352,7 @@
     formatMonthRangeDisplay,
     escapeHtml,
     hexToRgba,
+    mergeTimeIntervals,
     computeBlockLayout
   };
 })(window);

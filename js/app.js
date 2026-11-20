@@ -10,12 +10,11 @@
     TF.dnd = new TF.DragDropController(TF.timeline);
 
     // ==================== 1. Global Event Delegation (100% Reliable) ====================
-    // 透過全域事件委派處理所有核心按鈕，不論電腦或手機、不論 DOM 何時重繪皆 100% 響應
     document.addEventListener('click', (e) => {
       const target = e.target;
       if (!target || typeof target.closest !== 'function') return;
 
-      // 1) 開啟日曆 (Header, Quickbar, Mobile Dock, Mobile Drawer)
+      // 1) 開啟日曆 (Header Date Button)
       if (target.closest('[data-open-calendar]')) {
         e.preventDefault();
         TF.ui.openCalendarModal();
@@ -80,19 +79,25 @@
     });
 
     // ==================== 2. Toolbar & Action Controls ====================
-    document.getElementById('btnPrevDay')?.addEventListener('click', () => TF.store.shiftDate(-1));
-    document.getElementById('btnNextDay')?.addEventListener('click', () => TF.store.shiftDate(1));
+    document.getElementById('btnPrevDay')?.addEventListener('click', () => {
+      if (TF.store.isEditingDayTemplate()) TF.store.cancelEditingDayTemplate();
+      TF.store.shiftDate(-1);
+    });
+    document.getElementById('btnNextDay')?.addEventListener('click', () => {
+      if (TF.store.isEditingDayTemplate()) TF.store.cancelEditingDayTemplate();
+      TF.store.shiftDate(1);
+    });
     document.getElementById('btnToday')?.addEventListener('click', () => {
+      if (TF.store.isEditingDayTemplate()) TF.store.cancelEditingDayTemplate();
       TF.store.setDate(toDateKey(new Date()));
       TF.timeline.scrollToSmartPosition();
     });
 
     document.getElementById('datePickerInput')?.addEventListener('change', (e) => {
-      if (e.target.value) TF.store.setDate(e.target.value);
-    });
-
-    document.getElementById('btnQuickNewBlock')?.addEventListener('click', () => {
-      TF.ui.openBlockModal(null, { startMinutes: 540, durationMinutes: 60 });
+      if (e.target.value) {
+        if (TF.store.isEditingDayTemplate()) TF.store.cancelEditingDayTemplate();
+        TF.store.setDate(e.target.value);
+      }
     });
 
     document.getElementById('btnThemeToggle')?.addEventListener('click', () => {
@@ -118,7 +123,7 @@
     document.getElementById('btnCopyYesterday')?.addEventListener('click', () => {
       const count = TF.store.copyYesterdayToCurrent();
       if (count > 0) {
-        TF.ui.showToast(`已從昨日複製 ${count} 項活動排程`, true);
+        TF.ui.showToast(`已從昨日複製 ${count} 項活動排程`, !TF.store.isEditingDayTemplate());
       } else {
         TF.ui.showToast('昨日沒有排程可供複製');
       }
@@ -127,12 +132,13 @@
     document.getElementById('btnClearDay')?.addEventListener('click', () => {
       const blocks = TF.store.getBlocks();
       if (blocks.length === 0) {
-        TF.ui.showToast('當日目前沒有活動方塊');
+        TF.ui.showToast('目前時間表沒有活動方塊');
         return;
       }
-      if (confirm(`確定要清空當日全部 ${blocks.length} 項活動排程嗎？`)) {
+      const label = TF.store.isEditingDayTemplate() ? '目前模板' : '當日';
+      if (confirm(`確定要清空${label}全部 ${blocks.length} 項活動排程嗎？`)) {
         const count = TF.store.clearCurrentDay();
-        TF.ui.showToast(`已清空當日 ${count} 項活動方塊`, true);
+        TF.ui.showToast(`已清空 ${count} 項活動方塊`, !TF.store.isEditingDayTemplate());
       }
     });
 
@@ -187,7 +193,7 @@
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && TF.store.selectedBlockId) {
         e.preventDefault();
         TF.store.deleteBlock(TF.store.selectedBlockId);
-        TF.ui.showToast('已刪除活動方塊', true);
+        TF.ui.showToast('已刪除活動方塊', !TF.store.isEditingDayTemplate());
       }
     });
 
@@ -195,7 +201,7 @@
     TF.store.subscribe((reason) => {
       TF.timeline.render();
       TF.ui.renderAll();
-      if (reason === 'date') {
+      if (reason === 'date' || reason === 'template-edit-mode') {
         TF.timeline.updateNowLine();
       }
     });
@@ -214,9 +220,9 @@
       }
     }
 
-    // Register Service Worker (v2.0.0)
+    // Register Service Worker (v2.1.0)
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
-      navigator.serviceWorker.register('./sw.js?v=2.0.0').then((reg) => {
+      navigator.serviceWorker.register('./sw.js?v=2.1.0').then((reg) => {
         if (reg.waiting) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
