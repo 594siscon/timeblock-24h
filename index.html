@@ -56,6 +56,7 @@
           <span class="sync-dot" id="syncStatusDot"></span>
           <span class="sync-btn-text" id="syncStatusText">雲端同步</span>
         </button>
+        <button type="button" class="btn-pill desktop-only" id="btnOpenStatsModalDesktop" title="開啟完整時間分配統計（日/週/月）">📊 統計</button>
         <button type="button" class="icon-btn mobile-only" id="btnMobileStats" title="時間分配統計" aria-label="時間分配統計">📊</button>
         <button type="button" class="icon-btn" id="btnThemeToggle" title="切換深淺色" aria-label="切換深淺色">🌙</button>
       </div>
@@ -82,7 +83,7 @@
 
         <div class="sidebar-footer-tip">
           <span>💡 預設 1 小時，拖曳方塊上下邊緣可每 <b>15 分鐘</b>調整高度。雙擊空白處也可快速新增。</span>
-          <div class="sidebar-version-tag">時間方塊 v1.2.1</div>
+          <div class="sidebar-version-tag">時間方塊 v1.3.0</div>
         </div>
       </aside>
 
@@ -108,8 +109,11 @@
       <aside class="sidebar-right desktop-only">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">今日時間分配</h2>
-            <p class="panel-hint">以 24 小時為基準統計</p>
+            <h2 class="panel-title" id="statsDesktopHeading">時間分配統計</h2>
+            <p class="panel-hint" id="statsDesktopSubHeading">全天與可支配時間分析（日／週／月）</p>
+          </div>
+          <div class="panel-header-actions">
+            <button type="button" class="icon-btn-sm" id="btnExpandStats" title="放大檢視統計圖表" aria-label="放大統計">⤢</button>
           </div>
         </div>
 
@@ -165,7 +169,7 @@
       </div>
       <div class="category-filters" id="categoryFiltersMobile"></div>
       <div class="template-list drawer-template-list" id="templateListMobile"></div>
-      <div class="drawer-version-tag">時間方塊 v1.2.1</div>
+      <div class="drawer-version-tag">時間方塊 v1.3.0</div>
     </div>
   </div>
 
@@ -177,10 +181,10 @@
   <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
 
   <!-- Corner Version Badge (Always visible in bottom-right corner) -->
-  <div class="corner-version-badge" id="cornerVersionBadge" role="status" title="時間方塊 v1.2.1 · 點擊檢查更新">
+  <div class="corner-version-badge" id="cornerVersionBadge" role="status" title="時間方塊 v1.3.0 · 點擊檢查更新">
     <span class="version-dot" aria-hidden="true"></span>
     <span class="version-label">時間方塊</span>
-    <span class="version-code">v1.2.1</span>
+    <span class="version-code">v1.3.0</span>
   </div>
 
   <!-- Modal 1: Edit / Create Time Block -->
@@ -323,9 +327,9 @@
 
   <!-- Modal 4: Mobile Statistics & Tools Modal -->
   <div class="modal-backdrop" id="statsModal" hidden>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle">
+    <div class="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle">
       <div class="modal-header">
-        <h3 class="modal-title" id="statsModalTitle">今日時間分配</h3>
+        <h3 class="modal-title" id="statsModalTitle">📊 時間分配統計（日 / 週 / 月）</h3>
         <button type="button" class="icon-btn-sm" data-close-modal="statsModal" aria-label="關閉">✕</button>
       </div>
       <div class="modal-body">
@@ -475,17 +479,23 @@
       <div class="modal-body">
         <div class="day-tpl-top-bar">
           <p class="panel-hint m-0">將整天規律排程存為模板，新的一天一鍵直接套入！</p>
-          <button type="button" class="btn-sm-primary" id="btnSaveCurrentAsDayTemplate">＋ 將今日儲存為模板</button>
+          <div class="day-tpl-top-actions">
+            <button type="button" class="btn-sm-secondary" id="btnCreateBlankDayTemplate">＋ 建立空白模板</button>
+            <button type="button" class="btn-sm-primary" id="btnSaveCurrentAsDayTemplate">📋 依今日排程建立</button>
+          </div>
         </div>
 
         <div id="saveDayTemplatePanel" class="save-day-tpl-panel" hidden>
-          <h4 class="save-day-tpl-title" id="dayTplFormTitle">建立新模板（以當前排程為基底）</h4>
+          <div class="save-day-tpl-header">
+            <h4 class="save-day-tpl-title" id="dayTplFormTitle">✏️ 編輯一日模板排程</h4>
+            <button type="button" class="icon-btn-sm" id="btnCloseDayTplEditor" aria-label="關閉編輯">✕</button>
+          </div>
           <form id="saveDayTemplateForm" class="save-day-tpl-form">
             <input type="hidden" id="editingDayTplId" value="" />
             <div class="form-row-cat">
               <div class="form-group flex-1">
                 <label class="form-label" for="newDayTplName">模板名稱</label>
-                <input type="text" id="newDayTplName" class="form-input" placeholder="例如：常規工作日、衝刺日、放假生活..." required />
+                <input type="text" id="newDayTplName" class="form-input" placeholder="例如：平日高效工作日、衝刺日、放假生活..." required />
               </div>
               <div class="form-group cat-icon-field">
                 <label class="form-label" for="newDayTplIcon">圖示</label>
@@ -496,15 +506,35 @@
               <label class="form-label" for="newDayTplDesc">模板說明（選填）</label>
               <input type="text" id="newDayTplDesc" class="form-input" placeholder="簡短描述此一日排程特色..." />
             </div>
-            <div class="form-group" id="groupUpdateBlocksFromCurrent" hidden>
-              <label class="form-checkbox-label" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12.5px; color:var(--text-secondary);">
-                <input type="checkbox" id="checkUpdateBlocksFromCurrent" />
-                <span id="labelUpdateBlocksFromCurrent">🔄 同步以今日排程覆蓋更新此模板活動</span>
-              </label>
+
+            <!-- 時間列表編輯區塊 -->
+            <div class="day-tpl-schedule-section">
+              <div class="day-tpl-schedule-header">
+                <div>
+                  <h5 class="day-tpl-schedule-title">📅 活動時間列表（時段排程）</h5>
+                  <p class="panel-hint m-0">在下方直接新增、刪除或修改每個時段的時間與活動內容：</p>
+                </div>
+                <div class="day-tpl-schedule-quick-actions">
+                  <button type="button" class="btn-xs-secondary" id="btnLoadCurrentDayIntoEditor" title="將今天時間軸上的排程帶入此清單供微調">📋 帶入今日排程</button>
+                  <button type="button" class="btn-xs-secondary is-danger-text" id="btnClearEditorSchedule" title="清空下方所有時段">清空時段</button>
+                </div>
+              </div>
+
+              <!-- 動態渲染的時間段列表容器 -->
+              <div class="day-tpl-schedule-list" id="dayTplScheduleList"></div>
+
+              <div class="day-tpl-schedule-add-bar">
+                <button type="button" class="btn-sm-secondary w-full" id="btnAddScheduleRow">＋ 新增活動時段</button>
+              </div>
+
+              <div class="day-tpl-schedule-summary" id="dayTplScheduleSummary">
+                共 0 項活動安排 · 排程總長 0.0 小時
+              </div>
             </div>
+
             <div class="modal-footer">
               <button type="button" class="btn-secondary" id="btnCancelSaveDayTemplate">取消</button>
-              <button type="submit" class="btn-primary" id="btnSubmitDayTemplate">儲存為新模板</button>
+              <button type="submit" class="btn-primary" id="btnSubmitDayTemplate">儲存一日模板</button>
             </div>
           </form>
           <hr class="modal-divider" />

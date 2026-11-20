@@ -462,7 +462,35 @@
       return true;
     }
 
-    updateDayTemplate(id, { name, icon, description, updateBlocksFromCurrentDate = false } = {}) {
+    createDayTemplate({ name = '新一日模板', icon = '📅', description = '', blocks = [] } = {}) {
+      this.pushUndo('建立一日模板');
+      const cleanBlocks = (blocks || [])
+        .map((b) => ({
+          title: (b.title || '未命名活動').trim(),
+          categoryId: b.categoryId || 'cat_work',
+          startMinutes: Number(b.startMinutes) || 0,
+          durationMinutes: Math.max(15, Number(b.durationMinutes) || 60),
+          note: (b.note || '').trim()
+        }))
+        .sort((a, b) => a.startMinutes - b.startMinutes);
+
+      const newTpl = {
+        id: uid('dtpl'),
+        name: (name || '新一日模板').trim(),
+        icon: icon || '📅',
+        description: description || `包含 ${cleanBlocks.length} 項活動安排`,
+        blocks: cleanBlocks
+      };
+
+      if (!Array.isArray(this.state.dayTemplates)) {
+        this.state.dayTemplates = [];
+      }
+      this.state.dayTemplates.push(newTpl);
+      this.notify('dayTemplates');
+      return newTpl;
+    }
+
+    updateDayTemplate(id, { name, icon, description, blocks = null, updateBlocksFromCurrentDate = false } = {}) {
       const list = this.getDayTemplates();
       const idx = list.findIndex((t) => t.id === id);
       if (idx === -1) return null;
@@ -480,7 +508,20 @@
         target.description = description.trim();
       }
 
-      if (updateBlocksFromCurrentDate) {
+      if (Array.isArray(blocks)) {
+        target.blocks = blocks
+          .map((b) => ({
+            title: (b.title || '未命名活動').trim(),
+            categoryId: b.categoryId || 'cat_work',
+            startMinutes: Number(b.startMinutes) || 0,
+            durationMinutes: Math.max(15, Number(b.durationMinutes) || 60),
+            note: (b.note || '').trim()
+          }))
+          .sort((a, b) => a.startMinutes - b.startMinutes);
+        if (!description) {
+          target.description = `包含 ${target.blocks.length} 項活動安排`;
+        }
+      } else if (updateBlocksFromCurrentDate) {
         const currentBlocks = this.getBlocks(this.selectedDate);
         if (currentBlocks && currentBlocks.length > 0) {
           const cleanBlocks = currentBlocks

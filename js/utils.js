@@ -5,7 +5,7 @@
   global.TimeBlock = TF; // Alias for 時間方塊
 
   const APP_NAME = '時間方塊';
-  const APP_VERSION = 'v1.2.1';
+  const APP_VERSION = 'v1.3.0';
   const MINUTES_PER_DAY = 1440;
   const SNAP_MINUTES = 15;
   const DEFAULT_DURATION = 60;

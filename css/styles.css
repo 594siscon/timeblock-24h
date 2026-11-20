@@ -2705,3 +2705,275 @@ button {
   }
 }
 
+
+/* ==================== Day Template Schedule List Editor ==================== */
+.save-day-tpl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.day-tpl-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.day-tpl-schedule-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.day-tpl-schedule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.day-tpl-schedule-title {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.day-tpl-schedule-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-xs-secondary {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-xs-secondary:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-xs-secondary.is-danger-text:hover {
+  color: #EF4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.day-tpl-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 2px 0;
+  margin-bottom: 10px;
+}
+
+.day-tpl-schedule-row {
+  display: grid;
+  grid-template-columns: 4px auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  transition: all 0.15s;
+}
+
+.day-tpl-schedule-row:hover {
+  border-color: var(--accent);
+  background: var(--bg-surface);
+}
+
+.schedule-row-color-bar {
+  width: 4px;
+  height: 28px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.schedule-row-time-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.schedule-to-sep {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.schedule-dur-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.schedule-row-detail-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.schedule-select {
+  padding: 5px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 7px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.schedule-select:focus {
+  border-color: var(--accent);
+}
+
+.schedule-input-title {
+  flex: 1;
+  min-width: 100px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 7px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.schedule-input-title:focus {
+  border-color: var(--accent);
+}
+
+.btn-row-del {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.btn-row-del:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #EF4444;
+}
+
+.day-tpl-schedule-add-bar {
+  margin: 6px 0 10px;
+}
+
+.day-tpl-schedule-summary {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: right;
+  padding-top: 4px;
+}
+
+@media (max-width: 600px) {
+  .day-tpl-schedule-row {
+    grid-template-columns: 4px 1fr auto;
+    row-gap: 6px;
+  }
+  .schedule-row-time-group {
+    grid-column: 2 / 3;
+  }
+  .btn-row-del {
+    grid-column: 3 / 4;
+    grid-row: 1 / 3;
+  }
+  .schedule-row-detail-group {
+    grid-column: 2 / 3;
+    width: 100%;
+  }
+}
+
+/* Month Chart Bars */
+.month-chart-bars {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  height: 86px;
+  align-items: flex-end;
+}
+
+.month-chart-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  cursor: pointer;
+  padding: 4px 2px;
+  border-radius: 8px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.month-chart-col:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px);
+}
+
+.month-col-hrs {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+
+.month-col-bar-wrap {
+  width: 100%;
+  max-width: 22px;
+  height: 48px;
+  background: rgba(125, 125, 125, 0.15);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.month-col-bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #10B981 0%, rgba(16, 185, 129, 0.75) 100%);
+  border-radius: 5px 5px 0 0;
+  min-height: 2px;
+  transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.month-col-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
