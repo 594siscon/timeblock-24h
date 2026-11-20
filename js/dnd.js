@@ -20,7 +20,7 @@
       this.ghostEl = document.getElementById('dragGhost');
       this.tooltipEl = document.getElementById('liveTimeTooltip');
 
-      this.activeOp = null; // { type: 'template' | 'move' | 'resize', ... }
+      this.activeOp = null;
       this.autoScrollRaf = null;
       this.lastPointer = { x: 0, y: 0 };
       this.lastTouchTime = 0;
@@ -58,7 +58,7 @@
         this.handleEnd('mouse');
       });
 
-      // Native Touch events with { passive: false } so iOS Safari never cancels drags with native scroll
+      // Touch events: only call preventDefault when actively dragging a block/resize handle
       document.addEventListener(
         'touchstart',
         (e) => {
@@ -110,45 +110,48 @@
         this.cancelActive();
       });
 
-      // Clicking/double-clicking on timeline empty space
-      this.timeline.slotsLayerEl.addEventListener('click', () => {
-        if (this.activeOp) return;
-        TF.store.setSelectedBlock(null);
-      });
+      // Timeline interactions
+      if (this.timeline.slotsLayerEl) {
+        this.timeline.slotsLayerEl.addEventListener('click', () => {
+          if (this.activeOp) return;
+          TF.store.setSelectedBlock(null);
+        });
 
-      this.timeline.slotsLayerEl.addEventListener('dblclick', (e) => {
-        const mins = this.timeline.clientYToMinutes(e.clientY);
-        const start = clamp(snapMinutes(mins - 15), 0, MINUTES_PER_DAY - DEFAULT_DURATION);
-        TF.ui.openBlockModal(null, { startMinutes: start, durationMinutes: DEFAULT_DURATION });
-      });
+        this.timeline.slotsLayerEl.addEventListener('dblclick', (e) => {
+          const mins = this.timeline.clientYToMinutes(e.clientY);
+          const start = clamp(snapMinutes(mins - 15), 0, MINUTES_PER_DAY - DEFAULT_DURATION);
+          TF.ui?.openBlockModal(null, { startMinutes: start, durationMinutes: DEFAULT_DURATION });
+        });
+      }
 
-      // Block action buttons & double click to edit
-      this.timeline.blocksLayerEl.addEventListener('click', (e) => {
-        const actionBtn = e.target.closest('[data-action]');
-        if (!actionBtn) return;
-        e.stopPropagation();
-        const blockEl = actionBtn.closest('.time-block');
-        if (!blockEl) return;
-        const id = blockEl.dataset.blockId;
-        const action = actionBtn.dataset.action;
+      if (this.timeline.blocksLayerEl) {
+        this.timeline.blocksLayerEl.addEventListener('click', (e) => {
+          const actionBtn = e.target.closest('[data-action]');
+          if (!actionBtn) return;
+          e.stopPropagation();
+          const blockEl = actionBtn.closest('.time-block');
+          if (!blockEl) return;
+          const id = blockEl.dataset.blockId;
+          const action = actionBtn.dataset.action;
 
-        if (action === 'edit') {
-          TF.ui.openBlockModal(id);
-        } else if (action === 'duplicate') {
-          const dup = TF.store.duplicateBlock(id);
-          if (dup) TF.ui.showToast('已複製活動方塊', true);
-        } else if (action === 'delete') {
-          TF.store.deleteBlock(id);
-          TF.ui.showToast('已刪除活動方塊', true);
-        }
-      });
+          if (action === 'edit') {
+            TF.ui?.openBlockModal(id);
+          } else if (action === 'duplicate') {
+            const dup = TF.store.duplicateBlock(id);
+            if (dup) TF.ui?.showToast('已複製活動方塊', true);
+          } else if (action === 'delete') {
+            TF.store.deleteBlock(id);
+            TF.ui?.showToast('已刪除活動方塊', true);
+          }
+        });
 
-      this.timeline.blocksLayerEl.addEventListener('dblclick', (e) => {
-        if (e.target.closest('[data-action]') || e.target.closest('.resize-handle')) return;
-        const blockEl = e.target.closest('.time-block');
-        if (!blockEl) return;
-        TF.ui.openBlockModal(blockEl.dataset.blockId);
-      });
+        this.timeline.blocksLayerEl.addEventListener('dblclick', (e) => {
+          if (e.target.closest('[data-action]') || e.target.closest('.resize-handle')) return;
+          const blockEl = e.target.closest('.time-block');
+          if (!blockEl) return;
+          TF.ui?.openBlockModal(blockEl.dataset.blockId);
+        });
+      }
     }
 
     findTouch(touchList, identifier) {
@@ -159,7 +162,9 @@
     }
 
     handleStart({ target, clientX, clientY, id, isTouch, rawEvent }) {
-      // 1. Resize handle on an existing time block (immediate capture on both mouse & iOS touch)
+      if (!target || typeof target.closest !== 'function') return;
+
+      // 1. Resize handle on placed time block
       const resizeHandle = target.closest('.resize-handle');
       if (resizeHandle) {
         const blockEl = resizeHandle.closest('.time-block');
@@ -176,7 +181,7 @@
 
         this.activeOp = {
           type: 'resize',
-          edge: resizeHandle.dataset.resize, // 'top' | 'bottom'
+          edge: resizeHandle.dataset.resize,
           id,
           isTouch,
           blockId: block.id,
@@ -217,7 +222,6 @@
         };
 
         if (isTouch) {
-          // On iOS touch: brief hold (220ms) lifts the block so normal vertical swiping scrolls the 24h grid
           op.longPressTimer = setTimeout(() => {
             if (this.activeOp !== op) return;
             this.activateBlockMove(op);
@@ -229,7 +233,7 @@
         return;
       }
 
-      // 3. Draggable template card (desktop sidebar, mobile bottom dock, or mobile drawer)
+      // 3. Draggable template card (desktop sidebar dock, mobile bottom dock, or mobile drawer)
       const tplEl = target.closest('[data-template-id]');
       if (tplEl && !target.closest('[data-tpl-action]')) {
         const tpl = TF.store.getTemplateById(tplEl.dataset.templateId);
@@ -242,19 +246,20 @@
           id,
           isTouch,
           inMobileDock,
+          cardEl: tplEl,
           template: tpl,
           category: TF.store.getCategoryById(tpl.categoryId),
           startX: clientX,
           startY: clientY,
           activated: false,
+          isSwiping: false,
           longPressTimer: null,
           dropStartMinutes: null
         };
 
         if (isTouch) {
-          // Hold 240ms OR drag upward immediately lifts the block onto the 24h timeline
           op.longPressTimer = setTimeout(() => {
-            if (this.activeOp !== op || op.activated) return;
+            if (this.activeOp !== op || op.activated || op.isSwiping) return;
             this.activateTemplateDrag(op, this.lastPointer.x, this.lastPointer.y);
           }, 240);
         }
@@ -282,21 +287,21 @@
     activateTemplateDrag(op, clientX, clientY) {
       op.activated = true;
       document.body.classList.add('is-interacting');
-
-      // Close mobile drawer if open so the 24h timeline is fully visible for dropping
-      TF.ui.closeMobileDrawer();
+      TF.ui?.closeMobileDrawer();
 
       const cat = op.category;
       const dur = op.template.defaultDuration || DEFAULT_DURATION;
-      this.ghostEl.hidden = false;
-      this.ghostEl.style.setProperty('--ghost-color', cat.color);
-      this.ghostEl.style.backgroundColor = hexToRgba(cat.color, 0.95);
-      this.ghostEl.innerHTML = `
-        <span class="drag-ghost-icon">${escapeHtml(cat.icon || '')}</span>
-        <span class="drag-ghost-title">${escapeHtml(op.template.title)}</span>
-        <span class="drag-ghost-dur">${formatDuration(dur)}</span>
-      `;
-      this.positionGhost(clientX, clientY, op.isTouch);
+      if (this.ghostEl) {
+        this.ghostEl.hidden = false;
+        this.ghostEl.style.setProperty('--ghost-color', cat.color);
+        this.ghostEl.style.backgroundColor = hexToRgba(cat.color, 0.95);
+        this.ghostEl.innerHTML = `
+          <span class="drag-ghost-icon">${escapeHtml(cat.icon || '')}</span>
+          <span class="drag-ghost-title">${escapeHtml(op.template.title)}</span>
+          <span class="drag-ghost-dur">${formatDuration(dur)}</span>
+        `;
+        this.positionGhost(clientX, clientY, op.isTouch);
+      }
       this.updateTemplateDropPreview(op, clientX, clientY);
       this.startAutoScroll();
     }
@@ -310,63 +315,53 @@
       const dy = clientY - op.startY;
       const dist = Math.hypot(dx, dy);
 
-      // --- 1. Handle Resize ---
       if (op.type === 'resize') {
         rawEvent.preventDefault();
         this.updateResize(op, clientY);
         return;
       }
 
-      // --- 2. Handle Placed Block Move ---
       if (op.type === 'move') {
         if (!op.activated) {
           if (op.isTouch) {
-            // Finger moved before hold fired -> user is scrolling the 24h timeline
-            if (dist > 9) {
+            if (dist > 10) {
               clearTimeout(op.longPressTimer);
               this.activeOp = null;
             }
             return;
+          } else if (dist >= 5) {
+            this.activateBlockMove(op);
           } else {
-            if (dist >= 5) {
-              this.activateBlockMove(op);
-            } else {
-              return;
-            }
+            return;
           }
         }
-
         rawEvent.preventDefault();
         this.updateBlockMove(op, clientY);
         return;
       }
 
-      // --- 3. Handle Template Drag ---
       if (op.type === 'template') {
         if (!op.activated) {
           if (op.isTouch) {
             if (op.inMobileDock) {
-              // Upward drag immediately locks onto the card and blocks Safari scroll!
-              if (dy < -4 && Math.abs(dy) >= Math.abs(dx) * 0.65) {
+              if (dy < -8) {
                 rawEvent.preventDefault();
                 clearTimeout(op.longPressTimer);
                 this.activateTemplateDrag(op, clientX, clientY);
                 return;
               }
-              // Clearly horizontal swipe -> let dock scroll sideways smoothly
-              if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+              if (Math.abs(dx) > 12) {
                 clearTimeout(op.longPressTimer);
-                this.activeOp = null;
+                op.isSwiping = true;
               }
               return;
             } else {
-              // Inside vertical drawer list: vertical scroll vs horizontal/hold drag
-              if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.4) {
+              if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
                 clearTimeout(op.longPressTimer);
-                this.activeOp = null;
+                op.isSwiping = true;
                 return;
               }
-              if (Math.abs(dx) > 10 && Math.abs(dx) >= Math.abs(dy)) {
+              if (Math.abs(dx) > 10 || dy < -8) {
                 rawEvent.preventDefault();
                 clearTimeout(op.longPressTimer);
                 this.activateTemplateDrag(op, clientX, clientY);
@@ -376,6 +371,7 @@
             }
           } else {
             if (dist >= 6) {
+              rawEvent.preventDefault();
               this.activateTemplateDrag(op, clientX, clientY);
             } else {
               return;
@@ -414,7 +410,7 @@
         op.blockEl.style.height = `${heightPx}px`;
 
         op.blockEl.classList.toggle('is-tiny', heightPx < 26);
-        op.blockEl.classList.toggle('is-compact', heightPx >= 26 && heightPx < 46);
+        op.blockEl.classList.toggle('is-compact', heightPx >= 26 && heightPx < 48);
 
         const timeText = `${formatTime(newStart)}–${formatTime(newStart + newDur)}`;
         const inlineEl = op.blockEl.querySelector('.time-block-time-inline');
@@ -455,13 +451,12 @@
     }
 
     positionGhost(x, y, isTouch) {
-      // Lift ghost slightly above the thumb on mobile so finger never covers it
+      if (!this.ghostEl) return;
       const yOffset = isTouch ? '-130%' : '-65%';
       this.ghostEl.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, ${yOffset})`;
     }
 
     updateTemplateDropPreview(op, clientX, clientY) {
-      // On touch, target the visible point just above the thumb
       const targetY = op.isTouch ? clientY - 36 : clientY;
 
       if (!this.timeline.isPointInsideTimeline(clientX, targetY)) {
@@ -519,7 +514,7 @@
           TF.store.setSelectedBlock(op.blockId);
         }
       } else if (op.type === 'template') {
-        this.ghostEl.hidden = true;
+        if (this.ghostEl) this.ghostEl.hidden = true;
         this.timeline.hideDropPreview();
         if (op.activated && op.dropStartMinutes !== null) {
           TF.store.addBlock({
@@ -528,10 +523,12 @@
             startMinutes: op.dropStartMinutes,
             durationMinutes: op.template.defaultDuration || DEFAULT_DURATION
           });
-        } else if (!op.isSwiping) {
-          // User tapped or lifted without dragging -> Smart Click-to-Add!
-          const cardEl = document.querySelector(`[data-template-id="${op.template.id}"]`);
-          if (cardEl) cardEl._lastQuickAdd = Date.now();
+          TF.ui?.showToast(`已排入【${op.template.title}】（${formatTime(op.dropStartMinutes)}）`, true);
+        } else if (!op.activated && !op.isSwiping) {
+          // 單純點擊或輕觸方塊 -> 智慧排入時間表
+          document.querySelectorAll(`[data-template-id="${op.template.id}"]`).forEach((el) => {
+            el._lastQuickAdd = Date.now();
+          });
           TF.ui?.quickAddTemplateToTimeline?.(op.template.id);
         }
       }
@@ -543,7 +540,7 @@
       if (!this.activeOp) return;
       clearTimeout(this.activeOp.longPressTimer);
       this.stopAutoScroll();
-      this.ghostEl.hidden = true;
+      if (this.ghostEl) this.ghostEl.hidden = true;
       this.timeline.hideDropPreview();
       this.hideTooltip();
       document.body.classList.remove('is-interacting');
@@ -552,6 +549,7 @@
     }
 
     showTooltip(x, y, text) {
+      if (!this.tooltipEl) return;
       this.tooltipEl.hidden = false;
       this.tooltipEl.textContent = text;
       const clampedX = clamp(x, 90, window.innerWidth - 90);
@@ -560,7 +558,7 @@
     }
 
     hideTooltip() {
-      this.tooltipEl.hidden = true;
+      if (this.tooltipEl) this.tooltipEl.hidden = true;
     }
 
     startAutoScroll() {
@@ -571,8 +569,9 @@
           return;
         }
         const scrollEl = this.timeline.scrollEl;
+        if (!scrollEl) return;
         const rect = scrollEl.getBoundingClientRect();
-        const edgeZone = 68;
+        const edgeZone = 64;
         const pointerY = this.activeOp.isTouch && this.activeOp.type === 'template'
           ? this.lastPointer.y - 36
           : this.lastPointer.y;
@@ -603,7 +602,6 @@
             }
           }
         }
-
         this.autoScrollRaf = requestAnimationFrame(tick);
       };
       this.autoScrollRaf = requestAnimationFrame(tick);

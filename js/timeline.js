@@ -15,7 +15,7 @@
   class TimelineView {
     constructor() {
       this.scrollEl = document.getElementById('timelineScroll');
-      this.containerEl = document.querySelector('.timeline-container');
+      this.containerEl = document.getElementById('timelineContainer') || document.querySelector('.timeline-container');
       this.gridEl = document.getElementById('timelineGrid');
       this.hoursColEl = document.getElementById('timelineHours');
       this.slotsLayerEl = document.getElementById('timelineSlots');
@@ -38,10 +38,10 @@
     getHourHeight() {
       const cfg = TF.store.state.settings.hourHeight;
       if (cfg === 'fit') {
-        const available = Math.max(320, (this.scrollEl?.clientHeight || window.innerHeight - 140) - 36);
+        const available = Math.max(300, (this.scrollEl?.clientHeight || window.innerHeight - 160) - 24);
         return Math.max(18, Math.floor(available / 24));
       }
-      return Number(cfg) || 64;
+      return Number(cfg) || 60;
     }
 
     minutesToPx(minutes) {
@@ -52,18 +52,35 @@
       return (px / this.getHourHeight()) * 60;
     }
 
+    clientYToMinutes(clientY) {
+      if (!this.gridEl) return 540;
+      const rect = this.gridEl.getBoundingClientRect();
+      const offsetY = clientY - rect.top;
+      return this.pxToMinutes(offsetY);
+    }
+
+    isPointInsideTimeline(clientX, clientY) {
+      if (!this.scrollEl) return false;
+      const rect = this.scrollEl.getBoundingClientRect();
+      return (
+        clientX >= rect.left - 24 &&
+        clientX <= rect.right + 24 &&
+        clientY >= rect.top - 12 &&
+        clientY <= rect.bottom + 12
+      );
+    }
+
     buildStaticGrid() {
+      if (!this.hoursColEl || !this.slotsLayerEl) return;
       this.hoursColEl.innerHTML = '';
       this.slotsLayerEl.innerHTML = '';
 
       for (let h = 0; h < 24; h++) {
-        // Hour label on the left rail
         const label = document.createElement('div');
         label.className = 'hour-label';
         label.textContent = `${String(h).padStart(2, '0')}:00`;
         this.hoursColEl.appendChild(label);
 
-        // Hour slot row in main grid
         const row = document.createElement('div');
         row.className = 'hour-row';
         if (h < 6 || h >= 23) row.classList.add('is-night');
@@ -76,7 +93,6 @@
         this.slotsLayerEl.appendChild(row);
       }
 
-      // 24:00 end label at the very bottom
       const endLabel = document.createElement('div');
       endLabel.className = 'hour-label hour-label-end';
       endLabel.textContent = '24:00';
@@ -84,6 +100,7 @@
     }
 
     applyZoom() {
+      if (!this.gridEl || !this.hoursColEl) return;
       const hourHeight = this.getHourHeight();
       const totalHeight = hourHeight * 24;
       const isFit = TF.store.state.settings.hourHeight === 'fit' || hourHeight <= 34;
@@ -96,152 +113,117 @@
     }
 
     updateNowLine() {
+      if (!this.nowLineEl || !this.nowLabelEl) return;
       const todayKey = toDateKey(new Date());
       const isToday = TF.store.selectedDate === todayKey;
       if (!isToday) {
         this.nowLineEl.hidden = true;
         return;
       }
+
       const now = new Date();
       const mins = now.getHours() * 60 + now.getMinutes();
-      const top = this.minutesToPx(mins);
       this.nowLineEl.hidden = false;
-      this.nowLineEl.style.top = `${top}px`;
+      this.nowLineEl.style.top = `${this.minutesToPx(mins)}px`;
       this.nowLabelEl.textContent = formatTime(mins);
     }
 
-    scrollToSmartPosition() {
-      if (TF.store.state.settings.hourHeight === 'fit') {
-        this.scrollEl.scrollTo({ top: 0, behavior: 'auto' });
-        return;
-      }
-      const todayKey = toDateKey(new Date());
-      let targetMins = 7 * 60; // Default 07:00
-      if (TF.store.selectedDate === todayKey) {
-        const now = new Date();
-        const nowMins = now.getHours() * 60 + now.getMinutes();
-        targetMins = Math.max(0, nowMins - 150);
-      }
-      const targetPx = this.minutesToPx(targetMins);
-      this.scrollEl.scrollTo({ top: targetPx, behavior: 'auto' });
+    render() {
+      if (!this.blocksLayerEl) return;
+      this.applyZoom();
+
+      const blocks = TF.store.getBlocks();
+      const layout = computeBlockLayout(blocks);
+      const selectedId = TF.store.selectedBlockId;
+
+      const html = blocks.map((block) => {
+        const cat = TF.store.getCategoryById(block.categoryId);
+        const topPx = this.minutesToPx(block.startMinutes);
+        const heightPx = Math.max(14, this.minutesToPx(block.durationMinutes));
+        const pos = layout.get(block.id) || { col: 0, totalCols: 1 };
+        const widthPct = 100 / pos.totalCols;
+        const leftPct = pos.col * widthPct;
+
+        const isTiny = heightPx < 26;
+        const isCompact = heightPx >= 26 && heightPx < 48;
+        const isSelected = block.id === selectedId;
+        const timeRange = `${formatTime(block.startMinutes)}–${formatTime(block.startMinutes + block.durationMinutes)}`;
+
+        const classes = ['time-block'];
+        if (isTiny) classes.push('is-tiny');
+        if (isCompact) classes.push('is-compact');
+        if (isSelected) classes.push('is-selected');
+
+        return `
+          <div class="${classes.join(' ')}"
+               data-block-id="${block.id}"
+               style="top:${topPx}px; height:${heightPx}px; left:calc(${leftPct}% + 3px); width:calc(${widthPct}% - 6px); --blk-color:${cat.color}; --blk-bg:${hexToRgba(cat.color, 0.16)}; --blk-border:${hexToRgba(cat.color, 0.45)};">
+            <div class="resize-handle resize-handle-top" data-resize="top" title="拖曳調整開始時間"></div>
+            <div class="time-block-inner">
+              <div class="time-block-header">
+                <span class="time-block-icon">${escapeHtml(cat.icon || '')}</span>
+                <span class="time-block-title">${escapeHtml(block.title)}</span>
+                <span class="time-block-time-inline">${timeRange}</span>
+              </div>
+              <div class="time-block-meta">
+                <span class="time-block-range">${timeRange} · ${formatDuration(block.durationMinutes)}</span>
+                ${block.note ? `<span class="time-block-note">${escapeHtml(block.note)}</span>` : ''}
+              </div>
+            </div>
+            <div class="time-block-actions">
+              <button type="button" class="blk-act-btn" data-action="edit" title="編輯活動">✏️</button>
+              <button type="button" class="blk-act-btn" data-action="duplicate" title="複製活動">⧉</button>
+              <button type="button" class="blk-act-btn is-del" data-action="delete" title="刪除活動">✕</button>
+            </div>
+            <div class="resize-handle resize-handle-bottom" data-resize="bottom" title="拖曳調整結束時間"></div>
+          </div>
+        `;
+      }).join('');
+
+      this.blocksLayerEl.innerHTML = html;
     }
 
     showDropPreview({ startMinutes, durationMinutes, color, title }) {
-      const top = this.minutesToPx(startMinutes);
-      const height = Math.max(14, this.minutesToPx(durationMinutes));
-      const endMinutes = startMinutes + durationMinutes;
-
+      if (!this.dropPreviewEl) return;
+      const topPx = this.minutesToPx(startMinutes);
+      const heightPx = Math.max(16, this.minutesToPx(durationMinutes));
       this.dropPreviewEl.hidden = false;
-      this.dropPreviewEl.style.top = `${top}px`;
-      this.dropPreviewEl.style.height = `${height}px`;
-      this.dropPreviewEl.style.setProperty('--preview-color', color || '#3B82F6');
-      this.dropPreviewEl.style.backgroundColor = hexToRgba(color || '#3B82F6', 0.2);
-      this.dropPreviewEl.style.borderColor = color || '#3B82F6';
+      this.dropPreviewEl.style.top = `${topPx}px`;
+      this.dropPreviewEl.style.height = `${heightPx}px`;
+      this.dropPreviewEl.style.borderColor = color;
+      this.dropPreviewEl.style.backgroundColor = hexToRgba(color, 0.2);
       this.dropPreviewEl.innerHTML = `
-        <div class="drop-preview-content">
-          <span class="drop-preview-title">${escapeHtml(title)}</span>
-          <span class="drop-preview-time">${formatTime(startMinutes)} – ${formatTime(endMinutes)} (${formatDuration(durationMinutes)})</span>
-        </div>
+        <span class="drop-preview-label" style="background:${color}">
+          ${escapeHtml(title)} · ${formatTime(startMinutes)} – ${formatTime(startMinutes + durationMinutes)} (${formatDuration(durationMinutes)})
+        </span>
       `;
     }
 
     hideDropPreview() {
-      this.dropPreviewEl.hidden = true;
+      if (this.dropPreviewEl) this.dropPreviewEl.hidden = true;
     }
 
-    render() {
-      this.applyZoom();
-      this.updateNowLine();
+    scrollToMinutes(minutes) {
+      if (!this.scrollEl || TF.store.state.settings.hourHeight === 'fit') return;
+      const targetTop = Math.max(0, this.minutesToPx(minutes) - this.scrollEl.clientHeight * 0.28);
+      this.scrollEl.scrollTo({ top: targetTop, behavior: 'smooth' });
+    }
 
+    scrollToSmartPosition() {
+      if (!this.scrollEl || TF.store.state.settings.hourHeight === 'fit') return;
       const blocks = TF.store.getBlocks();
-      const layoutMap = computeBlockLayout(blocks);
-      const selectedId = TF.store.selectedBlockId;
+      const isToday = TF.store.selectedDate === toDateKey(new Date());
 
-      const fragment = document.createDocumentFragment();
-
-      for (const block of blocks) {
-        const cat = TF.store.getCategoryById(block.categoryId);
-        const pos = layoutMap.get(block.id) || { col: 0, totalCols: 1 };
-
-        const top = this.minutesToPx(block.startMinutes);
-        const height = Math.max(14, this.minutesToPx(block.durationMinutes));
-        const endMinutes = block.startMinutes + block.durationMinutes;
-
-        const widthPct = 100 / pos.totalCols;
-        const leftPct = pos.col * widthPct;
-
-        const el = document.createElement('div');
-        el.className = 'time-block';
-        if (block.id === selectedId) el.classList.add('is-selected');
-        if (height < 26) el.classList.add('is-tiny');
-        else if (height < 46) el.classList.add('is-compact');
-
-        el.dataset.blockId = block.id;
-        el.style.top = `${top}px`;
-        el.style.height = `${height}px`;
-        el.style.left = `calc(${leftPct}% + 3px)`;
-        el.style.width = `calc(${widthPct}% - 6px)`;
-        el.style.setProperty('--block-color', cat.color);
-        el.style.setProperty('--block-bg', hexToRgba(cat.color, 0.14));
-        el.style.setProperty('--block-bg-dark', hexToRgba(cat.color, 0.24));
-        el.style.setProperty('--block-border', hexToRgba(cat.color, 0.45));
-
-        const timeText = `${formatTime(block.startMinutes)}–${formatTime(endMinutes)}`;
-        const durText = formatDuration(block.durationMinutes);
-
-        el.innerHTML = `
-          <div class="resize-handle resize-handle-top" data-resize="top" title="拖曳調整開始時間（每 15 分鐘）">
-            <span class="resize-knob"></span>
-          </div>
-          <div class="time-block-inner">
-            <div class="time-block-header">
-              <span class="time-block-title">
-                <span class="time-block-icon">${escapeHtml(cat.icon || '')}</span>
-                <span class="time-block-name">${escapeHtml(block.title)}</span>
-              </span>
-              <span class="time-block-time-inline">${timeText}</span>
-            </div>
-            <div class="time-block-meta">
-              <span class="time-block-range">${timeText} · ${durText}</span>
-              <span class="time-block-cat-tag">${escapeHtml(cat.name)}</span>
-            </div>
-            ${block.note && height >= 68 ? `<div class="time-block-note">${escapeHtml(block.note)}</div>` : ''}
-          </div>
-          <div class="time-block-actions">
-            <button type="button" class="block-action-btn" data-action="edit" title="編輯活動" aria-label="編輯">✎</button>
-            <button type="button" class="block-action-btn" data-action="duplicate" title="複製方塊" aria-label="複製">⧉</button>
-            <button type="button" class="block-action-btn is-danger" data-action="delete" title="刪除" aria-label="刪除">✕</button>
-          </div>
-          <div class="resize-handle resize-handle-bottom" data-resize="bottom" title="拖曳調整結束時間（每 15 分鐘）">
-            <span class="resize-knob"></span>
-          </div>
-        `;
-
-        fragment.appendChild(el);
+      let targetMin = 7 * 60; // default 07:00
+      if (isToday) {
+        const now = new Date();
+        targetMin = Math.max(0, now.getHours() * 60 + now.getMinutes() - 90);
+      } else if (blocks.length > 0) {
+        const firstNonZero = blocks.find((b) => b.startMinutes >= 360) || blocks[0];
+        targetMin = Math.max(0, firstNonZero.startMinutes - 45);
       }
 
-      this.blocksLayerEl.innerHTML = '';
-      this.blocksLayerEl.appendChild(fragment);
-    }
-
-    /**
-     * Converts clientY viewport coordinate to snapped minutes within [0, 1440].
-     */
-    clientYToMinutes(clientY) {
-      const rect = this.gridEl.getBoundingClientRect();
-      const offsetY = clientY - rect.top;
-      const mins = this.pxToMinutes(offsetY);
-      return Math.max(0, Math.min(MINUTES_PER_DAY, mins));
-    }
-
-    isPointInsideTimeline(clientX, clientY) {
-      const rect = this.scrollEl.getBoundingClientRect();
-      return (
-        clientX >= rect.left - 24 &&
-        clientX <= rect.right + 24 &&
-        clientY >= rect.top - 10 &&
-        clientY <= rect.bottom + 24
-      );
+      this.scrollEl.scrollTop = Math.max(0, this.minutesToPx(targetMin));
     }
   }
 

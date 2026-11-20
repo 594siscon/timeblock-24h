@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>時間方塊 · 24H 時間管理</title>
+  <title>時間方塊 v2.0.0 · 24H 時間管理</title>
 
   <!-- PWA & iOS Safari Support -->
-  <link rel="manifest" href="./manifest.json" />
+  <link rel="manifest" href="./manifest.json?v=2.0.0" />
   <meta name="theme-color" content="#2563EB" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -14,7 +14,32 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
 
-  <link rel="stylesheet" href="./css/styles.css?v=1.2.2" />
+  <!-- 自動清理舊版 Service Worker 快取，確保 v2.0.0 始終載入最新代碼 -->
+  <script>
+    (function () {
+      try {
+        var CURRENT_VER = 'v2.0.0';
+        var savedVer = localStorage.getItem('timeblock_app_version');
+        if (savedVer !== CURRENT_VER) {
+          localStorage.setItem('timeblock_app_version', CURRENT_VER);
+          if ('caches' in window) {
+            caches.keys().then(function (keys) {
+              keys.forEach(function (k) {
+                if (k.indexOf(CURRENT_VER) === -1) caches.delete(k);
+              });
+            });
+          }
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              regs.forEach(function (r) { r.update(); });
+            });
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  <link rel="stylesheet" href="./css/styles.css?v=2.0.0" />
 </head>
 <body>
   <div class="app-shell">
@@ -30,14 +55,21 @@
             <span class="brand-badge">24H</span>
           </div>
         </div>
+        <button type="button" class="header-ver-pill desktop-only" id="headerVersionBadge" data-open-version="true" title="點擊查看完整版本紀錄與更新日誌">
+          <span class="ver-dot"></span>
+          <span class="ver-text" data-version-text>v2.0.0</span>
+        </button>
       </div>
 
       <div class="header-center">
         <div class="date-nav">
           <button type="button" class="icon-btn" id="btnPrevDay" title="前一天" aria-label="前一天">‹</button>
-          <button type="button" class="date-display-btn" id="btnDateDisplay" title="選擇日期">
-            <span class="date-main" id="currentDateLabel">今日</span>
-            <span class="date-sub" id="currentDateSub">今天</span>
+          <button type="button" class="date-display-btn" id="btnDateDisplay" data-open-calendar="true" title="點擊開啟日曆選擇日期" aria-label="開啟日曆">
+            <span class="date-btn-icon" aria-hidden="true">📅</span>
+            <span class="date-btn-text">
+              <span class="date-main" id="currentDateLabel">今日</span>
+              <span class="date-sub" id="currentDateSub">今天</span>
+            </span>
           </button>
           <input type="date" id="datePickerInput" class="sr-only-date" aria-label="選擇日期" />
           <button type="button" class="icon-btn" id="btnNextDay" title="後一天" aria-label="後一天">›</button>
@@ -47,32 +79,34 @@
 
       <div class="header-right">
         <div class="zoom-group" id="headerZoomGroup" title="調整時間軸檢視密度">
-          <button type="button" class="zoom-btn" data-zoom="fit" title="縮小顯示整天 24 小時（免捲動）">全覽</button>
+          <button type="button" class="zoom-btn" data-zoom="fit" title="縮小顯示整天 24 小時整張列表">全覽</button>
           <button type="button" class="zoom-btn desktop-only" data-zoom="44">緊湊</button>
-          <button type="button" class="zoom-btn is-active" data-zoom="64">標準</button>
-          <button type="button" class="zoom-btn desktop-only" data-zoom="88">寬鬆</button>
+          <button type="button" class="zoom-btn is-active" data-zoom="60">標準</button>
+          <button type="button" class="zoom-btn desktop-only" data-zoom="84">寬鬆</button>
         </div>
+        <button type="button" class="btn-pill desktop-only" id="btnHeaderDayTemplates" data-open-day-templates="true" title="開啟一日活動模板庫">📋 模板</button>
+        <button type="button" class="btn-pill desktop-only" id="btnOpenStatsModalDesktop" data-open-stats="true" title="開啟完整日/週/月統計視窗">📊 統計</button>
         <button type="button" class="sync-status-btn" id="btnSyncModal" title="雲端即時同步設定">
           <span class="sync-dot" id="syncStatusDot"></span>
           <span class="sync-btn-text" id="syncStatusText">雲端同步</span>
         </button>
-        <button type="button" class="icon-btn mobile-only" id="btnMobileStats" title="時間分配統計" aria-label="時間分配統計">📊</button>
-        <button type="button" class="icon-btn" id="btnThemeToggle" title="切換深淺色" aria-label="切換深淺色">🌙</button>
+        <button type="button" class="icon-btn mobile-only" id="btnMobileStats" data-open-stats="true" title="時間分配統計" aria-label="時間分配統計">📊</button>
+        <button type="button" class="icon-btn" id="btnThemeToggle" title="切換深淺色主題" aria-label="切換深淺色">🌙</button>
       </div>
     </header>
 
     <!-- Main 3-Column Workspace (Responsive 1-Column on Mobile) -->
     <main class="workspace">
-      <!-- Left Sidebar (Desktop Only): Categories & Draggable Activity Templates -->
-      <aside class="sidebar-left desktop-only">
+      <!-- Left Sidebar (Desktop Dock): Categories & Draggable/Clickable Activity Templates -->
+      <aside class="sidebar-left desktop-only" aria-label="電腦版活動方塊 Dock">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">活動方塊庫</h2>
-            <p class="panel-hint">拖曳方塊至右側 24 小時表</p>
+            <h2 class="panel-title">活動方塊 Dock</h2>
+            <p class="panel-hint">點擊直接排入時間表，或按住拖曳至指定時段</p>
           </div>
           <div class="panel-header-actions">
-            <button type="button" class="btn-sm-secondary" data-open-categories title="管理活動類別">類別</button>
-            <button type="button" class="btn-sm-primary" data-add-template title="新增活動方塊">＋ 新增</button>
+            <button type="button" class="btn-sm-secondary" data-open-categories="true" title="管理活動類別">🏷️ 類別</button>
+            <button type="button" class="btn-sm-primary" data-add-template="true" title="新增活動方塊">＋ 新增</button>
           </div>
         </div>
 
@@ -81,15 +115,31 @@
         <div class="template-list" id="templateListDesktop"></div>
 
         <div class="sidebar-footer-tip">
-          <span>💡 預設 1 小時，拖曳方塊上下邊緣可每 <b>15 分鐘</b>調整高度。雙擊空白處也可快速新增。</span>
-          <div class="sidebar-version-tag">時間方塊 v1.2.2</div>
+          <span>💡 <b>點擊方塊</b>可自動排入今日空檔；<b>拖曳方塊</b>可放置於任意時段；拖拉方塊上下邊緣可每 15 分鐘微調時長。</span>
+          <button type="button" class="sidebar-version-tag" data-open-version="true" title="點擊查看版本更新紀錄">
+            <span>時間方塊</span>
+            <strong data-version-text>v2.0.0</strong>
+            <span>· 版本紀錄 ›</span>
+          </button>
         </div>
       </aside>
 
       <!-- Center: 24-Hour Timeline -->
       <section class="timeline-section" aria-label="24小時時間表">
+        <div class="timeline-Quickbar">
+          <div class="quickbar-left">
+            <span class="quickbar-date-full" id="timelineFullDateBanner">2026年11月20日 週五</span>
+            <span class="quickbar-count-badge" id="timelineBlockCountBadge">0 項活動</span>
+          </div>
+          <div class="quickbar-right">
+            <button type="button" class="btn-xs-secondary" data-open-calendar="true" title="開啟月曆選擇日期">📅 選日期</button>
+            <button type="button" class="btn-xs-secondary" data-open-day-templates="true" title="套用或編輯一日活動模板">📋 一日模板</button>
+            <button type="button" class="btn-xs-primary" id="btnQuickNewBlock" title="在時間表新增一項活動">＋ 排入活動</button>
+          </div>
+        </div>
+
         <div class="timeline-scroll" id="timelineScroll">
-          <div class="timeline-container">
+          <div class="timeline-container" id="timelineContainer">
             <div class="timeline-hours" id="timelineHours"></div>
             <div class="timeline-grid" id="timelineGrid">
               <div class="timeline-slots" id="timelineSlots"></div>
@@ -104,70 +154,76 @@
         </div>
       </section>
 
-      <!-- Right Sidebar (Desktop Only): Daily Stats & Tools -->
+      <!-- Right Sidebar (Desktop Only): Daily/Weekly/Monthly Stats & Tools -->
       <aside class="sidebar-right desktop-only">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">今日時間分配</h2>
-            <p class="panel-hint">以 24 小時為基準統計</p>
+            <h2 class="panel-title" id="statsDesktopHeading">📊 日統計 · 時間分配</h2>
+            <p class="panel-hint" id="statsDesktopSubHeading">全天 24 小時與可支配時間分析</p>
+          </div>
+          <div class="panel-header-actions">
+            <button type="button" class="icon-btn-sm" id="btnExpandStats" data-open-stats="true" title="展開大型統計報表視窗" aria-label="展開統計">⤢</button>
           </div>
         </div>
 
         <div class="stats-panel" id="statsContentDesktop"></div>
 
         <div class="tools-section">
-          <h3 class="tools-heading">一日模板與排程</h3>
+          <h3 class="tools-heading">一日模板與快捷排程</h3>
           <div class="tools-grid">
-            <button type="button" class="tool-btn" id="btnOpenDayTemplates">📅 一日活動模板庫（套用／儲存）</button>
-            <button type="button" class="tool-btn" id="btnCopyYesterday">📋 複製昨日排程</button>
-            <button type="button" class="tool-btn is-danger-text" id="btnClearDay">🗑️ 清空當日排程</button>
+            <button type="button" class="tool-btn" id="btnOpenDayTemplates" data-open-day-templates="true">📋 一日活動模板庫（套用 / 時間列表編輯）</button>
+            <button type="button" class="tool-btn" id="btnCopyYesterday">⏮️ 複製昨日排程到今天</button>
+            <button type="button" class="tool-btn is-danger-text" id="btnClearDay">🗑️ 清空當日所有排程</button>
           </div>
 
-          <h3 class="tools-heading">備份與跨裝置轉移</h3>
+          <h3 class="tools-heading">資料備份與版本資訊</h3>
           <div class="tools-grid">
-            <button type="button" class="tool-btn" id="btnExportData">⬇️ 匯出 JSON 備份</button>
-            <button type="button" class="tool-btn" id="btnImportData">⬆️ 匯入 JSON 備份</button>
+            <button type="button" class="tool-btn" id="btnExportData">⬇️ 匯出 JSON 備份檔</button>
+            <button type="button" class="tool-btn" id="btnImportData">⬆️ 匯入 JSON 備份檔</button>
+            <button type="button" class="tool-btn" data-open-version="true">📜 版本更新紀錄 (<span data-version-text>v2.0.0</span>)</button>
             <input type="file" id="importFileInput" accept="application/json" hidden />
           </div>
         </div>
       </aside>
     </main>
 
-    <!-- Mobile Bottom Draggable Activity Dock (iOS / Mobile Only) -->
-    <div class="mobile-dock mobile-only" aria-label="可拖曳活動方塊列">
+    <!-- Mobile Bottom Draggable & Clickable Activity Dock (Mobile / Tablet) -->
+    <div class="mobile-dock mobile-only" id="mobileDockContainer" aria-label="手機版底部活動方塊 Dock">
       <div class="mobile-dock-bar">
-        <span class="mobile-dock-hint">👆 往上拖曳填入時間表</span>
+        <span class="mobile-dock-hint">👆 點擊或上拖方塊排入</span>
         <div class="mobile-dock-actions">
-          <button type="button" class="btn-xs-secondary" id="btnDockCalendar" title="選擇日期日曆">📅 日曆</button>
-          <button type="button" class="btn-xs-secondary" id="btnDockDayTemplates" title="一日模板">📅 模板</button>
-          <button type="button" class="btn-xs-secondary" data-open-categories>類別</button>
-          <button type="button" class="btn-xs-primary" data-add-template>＋ 新增</button>
-          <button type="button" class="btn-xs-secondary" id="btnOpenMobileDrawer">展開 ▲</button>
+          <button type="button" class="btn-xs-secondary" id="btnDockCalendar" data-open-calendar="true" title="開啟日曆">📅 日曆</button>
+          <button type="button" class="btn-xs-secondary" id="btnDockDayTemplates" data-open-day-templates="true" title="一日活動模板">📋 模板</button>
+          <button type="button" class="btn-xs-secondary" data-open-categories="true" title="管理活動類別">🏷️ 類別</button>
+          <button type="button" class="btn-xs-primary" data-add-template="true" title="新增活動方塊">＋ 新增</button>
+          <button type="button" class="btn-xs-secondary" id="btnOpenMobileDrawer" data-open-drawer="true" title="展開全部方塊庫">展開 ▲</button>
         </div>
       </div>
       <div class="mobile-dock-scroll" id="mobileDockList"></div>
     </div>
 
     <!-- Mobile Full Drawer for Filtering & Managing Activity Templates -->
-    <div class="drawer-backdrop mobile-only" id="mobileDrawerBackdrop" hidden></div>
-    <div class="mobile-drawer mobile-only" id="mobileDrawer">
+    <div class="drawer-backdrop" id="mobileDrawerBackdrop"></div>
+    <div class="mobile-drawer" id="mobileDrawer" aria-label="全部活動方塊抽屜">
       <div class="drawer-handle"></div>
       <div class="panel-header">
         <div>
-          <h2 class="panel-title">全部活動方塊</h2>
-          <p class="panel-hint">長按方塊即可拖曳到 24 小時表</p>
+          <h2 class="panel-title">全部活動方塊 Dock</h2>
+          <p class="panel-hint">點擊方塊直接加入時間表，或長按拖曳</p>
         </div>
         <div class="panel-header-actions">
-          <button type="button" class="btn-sm-secondary" id="btnDrawerCalendar">📅 日曆</button>
-          <button type="button" class="btn-sm-secondary" id="btnDrawerDayTemplates">📅 一日模板</button>
-          <button type="button" class="btn-sm-secondary" data-open-categories>類別</button>
-          <button type="button" class="btn-sm-primary" data-add-template>＋ 新增</button>
-          <button type="button" class="icon-btn-sm" id="btnCloseMobileDrawer" aria-label="關閉">✕</button>
+          <button type="button" class="btn-sm-secondary" id="btnDrawerCalendar" data-open-calendar="true">📅 日曆</button>
+          <button type="button" class="btn-sm-secondary" id="btnDrawerDayTemplates" data-open-day-templates="true">📋 一日模板</button>
+          <button type="button" class="btn-sm-secondary" data-open-categories="true">🏷️ 類別</button>
+          <button type="button" class="btn-sm-primary" data-add-template="true">＋ 新增</button>
+          <button type="button" class="icon-btn-sm" id="btnCloseMobileDrawer" data-close-drawer="true" aria-label="關閉">✕</button>
         </div>
       </div>
       <div class="category-filters" id="categoryFiltersMobile"></div>
       <div class="template-list drawer-template-list" id="templateListMobile"></div>
-      <div class="drawer-version-tag">時間方塊 v1.2.2</div>
+      <button type="button" class="drawer-version-tag" data-open-version="true">
+        時間方塊 <span data-version-text>v2.0.0</span> · 點擊查看詳細版本紀錄
+      </button>
     </div>
   </div>
 
@@ -176,17 +232,19 @@
   <div class="live-time-tooltip" id="liveTimeTooltip" hidden></div>
 
   <!-- Toast Notification -->
-  <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <!-- Corner Version Badge (Always visible in bottom-right corner) -->
-  <div class="corner-version-badge" id="cornerVersionBadge" role="status" title="時間方塊 v1.2.2 · 點擊檢查更新">
+  <button type="button" class="corner-version-badge" id="cornerVersionBadge" data-open-version="true" title="時間方塊 v2.0.0 · 點擊開啟詳細版本紀錄">
     <span class="version-dot" aria-hidden="true"></span>
     <span class="version-label">時間方塊</span>
-    <span class="version-code">v1.2.2</span>
-  </div>
+    <span class="version-code" data-version-text>v2.0.0</span>
+  </button>
 
-  <!-- Modal 1: Edit / Create Time Block -->
-  <div class="modal-backdrop" id="blockModal" hidden>
+  <!-- ==================== MODALS (Pure CSS .is-open controlled) ==================== -->
+
+  <!-- Modal 1: Edit / Create Time Block on Timeline -->
+  <div class="modal-backdrop" id="blockModal">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="blockModalTitle">
       <div class="modal-header">
         <h3 class="modal-title" id="blockModalTitle">編輯活動方塊</h3>
@@ -224,19 +282,20 @@
             <button type="button" class="dur-chip" data-dur="90">1.5小時</button>
             <button type="button" class="dur-chip" data-dur="120">2小時</button>
             <button type="button" class="dur-chip" data-dur="180">3小時</button>
+            <button type="button" class="dur-chip" data-dur="240">4小時</button>
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="blockNoteInput">備註（選填）</label>
-          <textarea id="blockNoteInput" class="form-textarea" rows="2" placeholder="記錄細節或目標..."></textarea>
+          <textarea id="blockNoteInput" class="form-textarea" rows="2" placeholder="記錄細節或執行目標..."></textarea>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn-danger" id="btnDeleteBlockModal">刪除</button>
+          <button type="button" class="btn-danger" id="btnDeleteBlockModal">刪除此活動</button>
           <div class="modal-footer-right">
             <button type="button" class="btn-secondary" data-close-modal="blockModal">取消</button>
-            <button type="submit" class="btn-primary">儲存</button>
+            <button type="submit" class="btn-primary">儲存排程</button>
           </div>
         </div>
       </form>
@@ -244,10 +303,10 @@
   </div>
 
   <!-- Modal 2: Manage Categories -->
-  <div class="modal-backdrop" id="categoryModal" hidden>
+  <div class="modal-backdrop" id="categoryModal">
     <div class="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="categoryModalTitle">
       <div class="modal-header">
-        <h3 class="modal-title" id="categoryModalTitle">管理活動類別</h3>
+        <h3 class="modal-title" id="categoryModalTitle">🏷️ 管理活動類別</h3>
         <button type="button" class="icon-btn-sm" data-close-modal="categoryModal" aria-label="關閉">✕</button>
       </div>
       <div class="modal-body">
@@ -267,7 +326,7 @@
             </div>
             <div class="form-group cat-color-field">
               <label class="form-label" for="catColorInput">顏色</label>
-              <input type="color" id="catColorInput" class="form-color" value="#3B82F6" />
+              <input type="color" id="catColorInput" class="form-color" value="#2563EB" />
             </div>
           </div>
 
@@ -292,8 +351,8 @@
     </div>
   </div>
 
-  <!-- Modal 3: Create / Edit Activity Template -->
-  <div class="modal-backdrop" id="templateModal" hidden>
+  <!-- Modal 3: Create / Edit Activity Dock Template -->
+  <div class="modal-backdrop" id="templateModal">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="templateModalTitle">
       <div class="modal-header">
         <h3 class="modal-title" id="templateModalTitle">新增活動方塊</h3>
@@ -301,7 +360,7 @@
       </div>
       <form id="templateForm" class="modal-body">
         <div class="form-group">
-          <label class="form-label" for="tplTitleInput">活動名稱</label>
+          <label class="form-label" for="tplTitleInput">活動方塊名稱</label>
           <input type="text" id="tplTitleInput" class="form-input" placeholder="例如：英文聽力、程式開發、重訓..." required />
         </div>
         <div class="form-group">
@@ -309,45 +368,46 @@
           <select id="tplCategorySelect" class="form-select"></select>
         </div>
         <div class="form-group">
-          <label class="form-label" for="tplDurationSelect">拖入時預設時長</label>
+          <label class="form-label" for="tplDurationSelect">預設排入時長</label>
           <select id="tplDurationSelect" class="form-select"></select>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn-danger" id="btnDeleteTemplateModal" hidden>刪除</button>
+          <button type="button" class="btn-danger" id="btnDeleteTemplateModal" hidden>刪除此方塊</button>
           <div class="modal-footer-right">
             <button type="button" class="btn-secondary" data-close-modal="templateModal">取消</button>
-            <button type="submit" class="btn-primary">儲存</button>
+            <button type="submit" class="btn-primary">儲存方塊</button>
           </div>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal 4: Mobile Statistics & Tools Modal -->
-  <div class="modal-backdrop" id="statsModal" hidden>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle">
+  <!-- Modal 4: Full Statistics & Tools Modal -->
+  <div class="modal-backdrop" id="statsModal">
+    <div class="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle">
       <div class="modal-header">
-        <h3 class="modal-title" id="statsModalTitle">今日時間分配</h3>
+        <h3 class="modal-title" id="statsModalTitle">📊 時間分配統計（日 / 週 / 月）</h3>
         <button type="button" class="icon-btn-sm" data-close-modal="statsModal" aria-label="關閉">✕</button>
       </div>
       <div class="modal-body">
         <div id="statsContentModal"></div>
         <hr class="modal-divider" />
         <div class="mobile-stats-actions">
-          <button type="button" class="tool-btn" data-mobile-tool="btnOpenDayTemplates">📅 一日活動模板庫</button>
-          <button type="button" class="tool-btn" data-mobile-tool="btnCopyYesterday">📋 複製昨日排程</button>
-          <button type="button" class="tool-btn" data-mobile-tool="btnExportData">⬇️ 匯出備份</button>
-          <button type="button" class="tool-btn is-danger-text" data-mobile-tool="btnClearDay">🗑️ 清空當日</button>
+          <button type="button" class="tool-btn" data-mobile-tool="btnOpenDayTemplates">📋 一日活動模板庫</button>
+          <button type="button" class="tool-btn" data-mobile-tool="btnCopyYesterday">⏮️ 複製昨日排程</button>
+          <button type="button" class="tool-btn" data-mobile-tool="btnExportData">⬇️ 匯出 JSON 備份</button>
+          <button type="button" class="tool-btn" data-open-version="true">📜 版本紀錄 (<span data-version-text>v2.0.0</span>)</button>
+          <button type="button" class="tool-btn is-danger-text" data-mobile-tool="btnClearDay">🗑️ 清空當日排程</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Modal 5: Cloud Sync (Firebase Google Auth + Firestore Realtime) -->
-  <div class="modal-backdrop" id="syncModal" hidden>
+  <div class="modal-backdrop" id="syncModal">
     <div class="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
       <div class="modal-header">
-        <h3 class="modal-title" id="syncModalTitle">☁️ Google 帳號即時自動同步</h3>
+        <h3 class="modal-title" id="syncModalTitle">☁️ 雲端即時自動同步</h3>
         <button type="button" class="icon-btn-sm" data-close-modal="syncModal" aria-label="關閉">✕</button>
       </div>
       <div class="modal-body">
@@ -355,11 +415,10 @@
           <span class="sync-dot" id="syncModalDot"></span>
           <div class="sync-banner-text">
             <div class="sync-banner-title" id="syncBannerTitle">尚未登入 Google 帳號</div>
-            <div class="sync-banner-sub" id="syncBannerSub">使用 Google 登入後，電腦與 iPhone 的所有修改都會即時自動同步</div>
+            <div class="sync-banner-sub" id="syncBannerSub">登入後，電腦與手機的所有排程修改都會即時雙向同步</div>
           </div>
         </div>
 
-        <!-- Logged-in Panel -->
         <div id="syncLoggedInPanel" hidden>
           <div class="sync-account-card">
             <div class="sync-account-row">
@@ -374,12 +433,11 @@
           <div class="sync-actions-grid">
             <button type="button" class="tool-btn" id="btnSyncPullNow">⬇️ 立即從雲端拉取</button>
             <button type="button" class="tool-btn" id="btnSyncPushNow">⬆️ 立即上傳本機</button>
-            <button type="button" class="tool-btn" id="btnCopySyncLink">🔗 複製 iPhone 快速設定連結</button>
+            <button type="button" class="tool-btn" id="btnCopySyncLink">🔗 複製手機快速設定連結</button>
             <button type="button" class="tool-btn is-danger-text" id="btnSyncSignOut">🚪 登出帳號</button>
           </div>
         </div>
 
-        <!-- Auth Panel (Google One-Click Sign-In + Optional Email Fallback) -->
         <div id="syncAuthPanel">
           <button type="button" class="btn-google" id="btnSyncGoogle">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -390,10 +448,6 @@
             </svg>
             <span>使用 Google 帳號登入並即時同步</span>
           </button>
-
-          <p class="sync-ios-tip">
-            📱 iPhone 提醒：若點擊沒跳出 Google 視窗，請確認「設定 → Safari → 阻擋彈出式視窗」為關閉，或先在 Safari 分頁中登入。
-          </p>
 
           <details class="sync-email-fallback">
             <summary class="sync-divider"><span>或改用 Email 密碼登入（免彈窗）</span></summary>
@@ -418,22 +472,13 @@
 
         <hr class="modal-divider" />
 
-        <!-- Firebase Connection Settings -->
         <details class="sync-config-details" id="syncConfigDetails">
           <summary class="sync-config-summary">⚙️ Firebase 連線設定（首次設定一次即可）</summary>
           <form id="syncConfigForm" class="sync-config-form">
             <div class="form-group">
-              <label class="form-label" for="fbConfigInput">直接貼上 Firebase 的 firebaseConfig 程式碼（或 JSON）</label>
-              <textarea id="fbConfigInput" class="form-textarea" rows="6" placeholder='const firebaseConfig = {
-  apiKey: "AIza...",
-  authDomain: "xxx.firebaseapp.com",
-  projectId: "xxx",
-  ...
-};' required></textarea>
+              <label class="form-label" for="fbConfigInput">貼上 Firebase 的 firebaseConfig 程式碼或 JSON</label>
+              <textarea id="fbConfigInput" class="form-textarea" rows="5" placeholder='const firebaseConfig = { apiKey: "...", projectId: "..." };' required></textarea>
             </div>
-            <p class="sync-hint-text">
-              提示：在 Firebase Console 開啟「Google 登入」與「Firestore Database」（貼上 <code>firestore.rules</code>），再將 <code>firebaseConfig</code> 貼到上方（或寫入 <code>js/sync-config.js</code>）即可！
-            </p>
             <button type="submit" class="btn-secondary">儲存 Firebase 設定</button>
           </form>
         </details>
@@ -441,8 +486,8 @@
     </div>
   </div>
 
-  <!-- Modal 6: Calendar Month Picker (手機與電腦共用直覺日曆) -->
-  <div class="modal-backdrop" id="calendarModal" hidden>
+  <!-- Modal 6: Calendar Month Picker (電腦與手機共用直覺日曆) -->
+  <div class="modal-backdrop" id="calendarModal">
     <div class="modal-card modal-card-sm calendar-modal-card" role="dialog" aria-modal="true" aria-labelledby="calendarModalMonthLabel">
       <div class="modal-header">
         <div class="cal-nav">
@@ -461,33 +506,40 @@
         </div>
         <div class="cal-grid" id="calendarGridDays"></div>
         <div class="cal-footer-hint">
-          <span class="cal-dot-sample"></span> 有小圓點的日子代表已有排程
+          <span class="cal-dot-sample"></span> 有圓點標記代表當日已安排活動方塊
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal 7: Day Templates (一日活動模板庫) -->
-  <div class="modal-backdrop" id="dayTemplateModal" hidden>
+  <!-- Modal 7: Day Templates (一日活動模板庫 & 時間列表編輯器) -->
+  <div class="modal-backdrop" id="dayTemplateModal">
     <div class="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="dayTemplateModalTitle">
       <div class="modal-header">
-        <h3 class="modal-title" id="dayTemplateModalTitle">📅 一日活動模板庫</h3>
+        <h3 class="modal-title" id="dayTemplateModalTitle">📋 一日活動模板庫</h3>
         <button type="button" class="icon-btn-sm" data-close-modal="dayTemplateModal" aria-label="關閉">✕</button>
       </div>
       <div class="modal-body">
         <div class="day-tpl-top-bar">
-          <p class="panel-hint m-0">將整天規律排程存為模板，新的一天一鍵直接套入！</p>
-          <button type="button" class="btn-sm-primary" id="btnSaveCurrentAsDayTemplate">＋ 將今日儲存為模板</button>
+          <p class="panel-hint m-0">將每日重複的規律活動存為模板，新的一天一鍵直接套入！所有模板皆可透過時間列表編輯或刪除。</p>
+          <div class="day-tpl-top-actions">
+            <button type="button" class="btn-sm-secondary" id="btnCreateBlankDayTemplate">＋ 建立空白模板</button>
+            <button type="button" class="btn-sm-primary" id="btnSaveCurrentAsDayTemplate">📋 依今日排程建立</button>
+          </div>
         </div>
 
+        <!-- 模板時間列表編輯面板 -->
         <div id="saveDayTemplatePanel" class="save-day-tpl-panel" hidden>
-          <h4 class="save-day-tpl-title" id="dayTplFormTitle">建立新模板（以當前排程為基底）</h4>
+          <div class="save-day-tpl-header">
+            <h4 class="save-day-tpl-title" id="dayTplFormTitle">✏️ 編輯一日模板排程</h4>
+            <button type="button" class="icon-btn-sm" id="btnCloseDayTplEditor" aria-label="關閉編輯">✕</button>
+          </div>
           <form id="saveDayTemplateForm" class="save-day-tpl-form">
             <input type="hidden" id="editingDayTplId" value="" />
             <div class="form-row-cat">
               <div class="form-group flex-1">
                 <label class="form-label" for="newDayTplName">模板名稱</label>
-                <input type="text" id="newDayTplName" class="form-input" placeholder="例如：常規工作日、衝刺日、放假生活..." required />
+                <input type="text" id="newDayTplName" class="form-input" placeholder="例如：常規高效工作日、週末充電日..." required />
               </div>
               <div class="form-group cat-icon-field">
                 <label class="form-label" for="newDayTplIcon">圖示</label>
@@ -496,17 +548,36 @@
             </div>
             <div class="form-group">
               <label class="form-label" for="newDayTplDesc">模板說明（選填）</label>
-              <input type="text" id="newDayTplDesc" class="form-input" placeholder="簡短描述此一日排程特色..." />
+              <input type="text" id="newDayTplDesc" class="form-input" placeholder="簡短描述此模板的作息特色..." />
             </div>
-            <div class="form-group" id="groupUpdateBlocksFromCurrent" hidden>
-              <label class="form-checkbox-label" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12.5px; color:var(--text-secondary);">
-                <input type="checkbox" id="checkUpdateBlocksFromCurrent" />
-                <span id="labelUpdateBlocksFromCurrent">🔄 同步以今日排程覆蓋更新此模板活動</span>
-              </label>
+
+            <!-- 時間列表編輯區塊 -->
+            <div class="day-tpl-schedule-section">
+              <div class="day-tpl-schedule-header">
+                <div>
+                  <h5 class="day-tpl-schedule-title">🕒 模板活動時間列表</h5>
+                  <p class="panel-hint m-0">點擊任一時段卡片或「＋ 新增活動時段」，即可使用與平時時間表完全相同的介面編輯：</p>
+                </div>
+                <div class="day-tpl-schedule-quick-actions">
+                  <button type="button" class="btn-xs-secondary" id="btnLoadCurrentDayIntoEditor">📋 帶入今日排程</button>
+                  <button type="button" class="btn-xs-secondary is-danger-text" id="btnClearEditorSchedule">清空列表</button>
+                </div>
+              </div>
+
+              <div class="day-tpl-schedule-list" id="dayTplScheduleList"></div>
+
+              <div class="day-tpl-schedule-add-bar">
+                <button type="button" class="btn-sm-primary w-full" id="btnAddScheduleRow">＋ 新增活動時段（開啟活動方塊編輯器）</button>
+              </div>
+
+              <div class="day-tpl-schedule-summary" id="dayTplScheduleSummary">
+                共 0 項活動安排 · 排程總長 0h
+              </div>
             </div>
+
             <div class="modal-footer">
               <button type="button" class="btn-secondary" id="btnCancelSaveDayTemplate">取消</button>
-              <button type="submit" class="btn-primary" id="btnSubmitDayTemplate">儲存為新模板</button>
+              <button type="submit" class="btn-primary" id="btnSubmitDayTemplate">儲存一日模板</button>
             </div>
           </form>
           <hr class="modal-divider" />
@@ -517,19 +588,109 @@
     </div>
   </div>
 
-  <!-- Firebase Compat SDKs (Google Auth + Firestore Realtime, gracefully degrades offline) -->
+  <!-- Modal 8: Edit Day Template Time Block (與平時編輯時間列表完全相同的介面) -->
+  <div class="modal-backdrop" id="dayTplBlockModal">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="dayTplBlockModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="dayTplBlockModalTitle">編輯模板活動時段</h3>
+        <button type="button" class="icon-btn-sm" data-close-modal="dayTplBlockModal" aria-label="關閉">✕</button>
+      </div>
+      <form id="dayTplBlockForm" class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="dayTplBlockTitleInput">活動名稱</label>
+          <input type="text" id="dayTplBlockTitleInput" class="form-input" placeholder="例如：深度工作、運動、閱讀..." required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">活動類別</label>
+          <div class="cat-picker-grid" id="dayTplBlockCategoryPicker"></div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="dayTplBlockStartSelect">開始時間</label>
+            <select id="dayTplBlockStartSelect" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="dayTplBlockEndSelect">結束時間</label>
+            <select id="dayTplBlockEndSelect" class="form-select"></select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">快速設定時長（15 分鐘為單位）</label>
+          <div class="duration-chips" id="dayTplBlockDurationChips">
+            <button type="button" class="dur-chip" data-dur="15">15分</button>
+            <button type="button" class="dur-chip" data-dur="30">30分</button>
+            <button type="button" class="dur-chip" data-dur="45">45分</button>
+            <button type="button" class="dur-chip" data-dur="60">1小時</button>
+            <button type="button" class="dur-chip" data-dur="90">1.5小時</button>
+            <button type="button" class="dur-chip" data-dur="120">2小時</button>
+            <button type="button" class="dur-chip" data-dur="180">3小時</button>
+            <button type="button" class="dur-chip" data-dur="240">4小時</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="dayTplBlockNoteInput">備註（選填）</label>
+          <textarea id="dayTplBlockNoteInput" class="form-textarea" rows="2" placeholder="記錄細節或目標..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-danger" id="btnDeleteDayTplBlock">刪除此時段</button>
+          <div class="modal-footer-right">
+            <button type="button" class="btn-secondary" data-close-modal="dayTplBlockModal">取消</button>
+            <button type="submit" class="btn-primary" id="btnSaveDayTplBlock">儲存時段</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 9: Detailed Version History & System Info (詳細版本號與更新日誌) -->
+  <div class="modal-backdrop" id="versionModal">
+    <div class="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="versionModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="versionModalTitle">📜 時間方塊 · 版本紀錄與系統資訊</h3>
+        <button type="button" class="icon-btn-sm" data-close-modal="versionModal" aria-label="關閉">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="version-hero-card">
+          <div class="version-hero-left">
+            <div class="version-hero-badge">
+              <span class="version-dot"></span>
+              <span id="versionHeroCode">v2.0.0</span>
+            </div>
+            <div class="version-hero-meta">
+              <strong id="versionHeroName">時間方塊 (TimeBlock 24H)</strong>
+              <span id="versionHeroDate">發布日期：2026-11-20 · 全新 V2 核心架構</span>
+            </div>
+          </div>
+          <div class="version-hero-actions">
+            <button type="button" class="btn-sm-secondary" id="btnForceRefreshCache">🔄 檢查更新並刷新快取</button>
+            <button type="button" class="btn-sm-secondary is-danger-text" id="btnResetAllData">⚠️ 重置為預設示範資料</button>
+          </div>
+        </div>
+
+        <h4 class="changelog-section-title">完整版本演進日誌（Changelog）</h4>
+        <div class="changelog-timeline" id="versionChangelogList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Compat SDKs (Gracefully degrades offline) -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
-  <!-- Application Scripts (No Build Step Needed, Works on file:// & HTTP PWA) -->
-  <script src="./js/utils.js?v=1.2.2"></script>
-  <script src="./js/store.js?v=1.2.2"></script>
-  <script src="./js/sync-config.js?v=1.2.2"></script>
-  <script src="./js/sync.js?v=1.2.2"></script>
-  <script src="./js/timeline.js?v=1.2.2"></script>
-  <script src="./js/dnd.js?v=1.2.2"></script>
-  <script src="./js/ui.js?v=1.2.2"></script>
-  <script src="./js/app.js?v=1.2.2"></script>
+  <!-- Application Scripts (v2.0.0 Cache-Busted) -->
+  <script src="./js/utils.js?v=2.0.0"></script>
+  <script src="./js/store.js?v=2.0.0"></script>
+  <script src="./js/sync-config.js?v=2.0.0"></script>
+  <script src="./js/sync.js?v=2.0.0"></script>
+  <script src="./js/timeline.js?v=2.0.0"></script>
+  <script src="./js/dnd.js?v=2.0.0"></script>
+  <script src="./js/ui.js?v=2.0.0"></script>
+  <script src="./js/app.js?v=2.0.0"></script>
 </body>
 </html>

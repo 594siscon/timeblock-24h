@@ -1,4 +1,4 @@
-const CACHE_NAME = 'timeblock-24h-v1.2.2';
+const CACHE_NAME = 'timeblock-24h-v2.0.0';
 const ASSETS = [
   './',
   './index.html',
@@ -36,13 +36,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const reqUrl = new URL(event.request.url);
-  // Only cache same-origin static files; never intercept Firebase / Google Auth traffic
   if (reqUrl.origin !== self.location.origin) return;
 
-  // Network-first so iPhone & Desktop always get latest updates immediately when online,
-  // falling back to cache when offline.
+  // Network-first with cache fallback so updates are always immediate
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-cache' })
       .then((response) => {
         if (response && response.status === 200) {
           const copy = response.clone();

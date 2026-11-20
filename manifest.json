@@ -1,15 +1,19 @@
 {
-  "name": "時間方塊 · 24H 時間管理",
+  "name": "時間方塊 v2.0.0 · 24H 時間管理",
   "short_name": "時間方塊",
-  "description": "電腦與 iOS 共用的 24 小時拖曳式時間方塊管理 App",
+  "description": "24小時視覺化時間方塊排程、一日活動模板與日週月可支配時間統計工具 (v2.0.0)",
   "start_url": "./index.html",
-  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#F8FAFC",
+  "background_color": "#F1F5F9",
   "theme_color": "#2563EB",
-  "lang": "zh-Hant",
+  "orientation": "portrait-primary",
   "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "./icons/icon-192.png",
       "sizes": "192x192",
@@ -21,11 +25,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    },
-    {
-      "src": "./icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
     }
   ]
 }
