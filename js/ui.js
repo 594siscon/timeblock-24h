@@ -6,6 +6,8 @@
     MINUTES_PER_DAY,
     SNAP_MINUTES,
     DEFAULT_DURATION,
+    clamp,
+    snapMinutes,
     formatTime,
     formatDuration,
     formatHoursDecimal,
@@ -867,6 +869,95 @@
           });
         });
       });
+
+      // Bind Click-to-Add for all template cards (Desktop sidebar, Mobile dock, Mobile drawer)
+      const bindCardClick = (container) => {
+        if (!container) return;
+        container.querySelectorAll('[data-template-id]').forEach((card) => {
+          card.addEventListener('click', (e) => {
+            if (e.target.closest('[data-tpl-action]')) return;
+            const tplId = card.dataset.templateId;
+            if (!tplId) return;
+            if (card._lastQuickAdd && Date.now() - card._lastQuickAdd < 400) return;
+            card._lastQuickAdd = Date.now();
+            this.quickAddTemplateToTimeline(tplId);
+          });
+        });
+      };
+
+      bindCardClick(this.templateListDesktopEl);
+      bindCardClick(this.templateListMobileEl);
+      bindCardClick(this.mobileDockEl);
+    }
+
+    quickAddTemplateToTimeline(templateId) {
+      const tpl = TF.store.getTemplateById(templateId);
+      if (!tpl) return null;
+
+      const dur = tpl.defaultDuration || DEFAULT_DURATION;
+      const dateKey = TF.store.selectedDate;
+      const blocks = TF.store.getBlocks(dateKey);
+      const isToday = dateKey === TF.utils.toDateKey(new Date());
+
+      let baseMin = 9 * 60; // 09:00 default
+      if (isToday) {
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        baseMin = Math.ceil(nowMin / SNAP_MINUTES) * SNAP_MINUTES;
+        if (baseMin + dur > MINUTES_PER_DAY) baseMin = 0;
+      }
+
+      const hasCollision = (start, length) => {
+        const end = start + length;
+        return blocks.some((b) => {
+          const bEnd = b.startMinutes + b.durationMinutes;
+          return start < bEnd && end > b.startMinutes;
+        });
+      };
+
+      let chosenStart = null;
+      if (!hasCollision(baseMin, dur) && baseMin + dur <= MINUTES_PER_DAY) {
+        chosenStart = baseMin;
+      }
+
+      if (chosenStart === null) {
+        for (let m = baseMin; m <= MINUTES_PER_DAY - dur; m += SNAP_MINUTES) {
+          if (!hasCollision(m, dur)) { chosenStart = m; break; }
+        }
+      }
+
+      if (chosenStart === null) {
+        for (let m = 7 * 60; m < baseMin; m += SNAP_MINUTES) {
+          if (!hasCollision(m, dur)) { chosenStart = m; break; }
+        }
+      }
+
+      if (chosenStart === null) {
+        if (blocks.length > 0) {
+          let maxEnd = 0;
+          for (const b of blocks) {
+            const end = b.startMinutes + b.durationMinutes;
+            if (end > maxEnd) maxEnd = end;
+          }
+          chosenStart = maxEnd + dur <= MINUTES_PER_DAY ? snapMinutes(maxEnd) : clamp(baseMin, 0, MINUTES_PER_DAY - dur);
+        } else {
+          chosenStart = baseMin;
+        }
+      }
+
+      const block = TF.store.addBlock({
+        title: tpl.title,
+        categoryId: tpl.categoryId,
+        startMinutes: chosenStart,
+        durationMinutes: dur
+      });
+
+      if (block) {
+        TF.store.setSelectedBlock(block.id);
+        TF.timeline?.scrollToMinutes?.(chosenStart);
+        this.showToast(`已將【${tpl.title}】加入時間表（${formatTime(chosenStart)} – ${formatTime(chosenStart + dur)}）`, true);
+      }
+      return block;
     }
 
     renderStats() {
@@ -1174,16 +1265,14 @@
     // --- Modals ---
     openModal(modalEl) {
       if (!modalEl) return;
-      modalEl.hidden = false;
-      requestAnimationFrame(() => modalEl.classList.add('is-open'));
+      modalEl.removeAttribute('hidden');
+      modalEl.classList.add('is-open');
     }
 
     closeModal(modalEl) {
       if (!modalEl) return;
       modalEl.classList.remove('is-open');
-      setTimeout(() => {
-        if (!modalEl.classList.contains('is-open')) modalEl.hidden = true;
-      }, 180);
+      modalEl.setAttribute('hidden', '');
     }
 
     closeAllModals() {
@@ -1195,7 +1284,7 @@
         this.syncModalEl,
         this.calendarModalEl,
         this.dayTemplateModalEl
-      ].forEach((m) => this.closeModal(m));
+      ].filter(Boolean).forEach((m) => this.closeModal(m));
       this.closeMobileDrawer();
     }
 
@@ -1460,13 +1549,19 @@
     }
 
     openMobileDrawer() {
-      this.mobileDrawerEl.classList.add('is-open');
-      this.mobileDrawerBackdropEl.hidden = false;
+      this.mobileDrawerEl?.classList.add('is-open');
+      if (this.mobileDrawerBackdropEl) {
+        this.mobileDrawerBackdropEl.removeAttribute('hidden');
+        this.mobileDrawerBackdropEl.classList.add('is-open');
+      }
     }
 
     closeMobileDrawer() {
-      this.mobileDrawerEl.classList.remove('is-open');
-      this.mobileDrawerBackdropEl.hidden = true;
+      this.mobileDrawerEl?.classList.remove('is-open');
+      if (this.mobileDrawerBackdropEl) {
+        this.mobileDrawerBackdropEl.classList.remove('is-open');
+        this.mobileDrawerBackdropEl.setAttribute('hidden', '');
+      }
     }
 
     applyTheme() {

@@ -41,7 +41,17 @@
       if (e.target.value) TF.store.setDate(e.target.value);
     });
 
-    document.getElementById('btnDateDisplay').addEventListener('click', () => {
+    // Calendar Modal Openers (Header, Mobile Dock & Mobile Drawer)
+    const openCalendarHandler = (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      TF.ui.openCalendarModal();
+    };
+    document.getElementById('btnDateDisplay')?.addEventListener('click', openCalendarHandler);
+    document.getElementById('btnDockCalendar')?.addEventListener('click', openCalendarHandler);
+    document.getElementById('btnDrawerCalendar')?.addEventListener('click', (e) => {
+      e?.preventDefault?.();
+      TF.ui.closeMobileDrawer();
       TF.ui.openCalendarModal();
     });
 
@@ -153,7 +163,12 @@
 
     // Register Service Worker for PWA offline capability (only on http/https)
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        reg.update().catch(() => {});
+      }).catch(() => {});
     }
   }
 
