@@ -1534,16 +1534,17 @@
     // --- Modals ---
     openModal(modalEl) {
       if (!modalEl) return;
-      modalEl.hidden = false;
+      // Remove hidden attribute if present (belt-and-suspenders)
+      modalEl.removeAttribute('hidden');
+      // Force reflow so transition fires correctly on iOS Safari
+      void modalEl.offsetHeight;
       modalEl.classList.add('is-open');
     }
 
     closeModal(modalEl) {
       if (!modalEl) return;
       modalEl.classList.remove('is-open');
-      setTimeout(() => {
-        if (!modalEl.classList.contains('is-open')) modalEl.hidden = true;
-      }, 180);
+      // No need to set hidden – CSS display:none handles hiding via is-open absence
     }
 
     closeAllModals() {
@@ -1996,7 +1997,8 @@
     openMobileDrawer() {
       this.mobileDrawerEl?.classList.add('is-open');
       if (this.mobileDrawerBackdropEl) {
-        this.mobileDrawerBackdropEl.hidden = false;
+        this.mobileDrawerBackdropEl.removeAttribute('hidden');
+        void this.mobileDrawerBackdropEl.offsetHeight;
         this.mobileDrawerBackdropEl.classList.add('is-open');
       }
     }
@@ -2005,11 +2007,6 @@
       this.mobileDrawerEl?.classList.remove('is-open');
       if (this.mobileDrawerBackdropEl) {
         this.mobileDrawerBackdropEl.classList.remove('is-open');
-        setTimeout(() => {
-          if (!this.mobileDrawerBackdropEl.classList.contains('is-open')) {
-            this.mobileDrawerBackdropEl.hidden = true;
-          }
-        }, 200);
       }
     }
 

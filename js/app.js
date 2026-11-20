@@ -47,9 +47,18 @@
       e?.stopPropagation?.();
       TF.ui.openCalendarModal();
     };
-    document.getElementById('btnDateDisplay')?.addEventListener('click', openCalendarHandler);
-    document.getElementById('btnDockCalendar')?.addEventListener('click', openCalendarHandler);
-    document.getElementById('btnDrawerCalendar')?.addEventListener('click', () => {
+    ['btnDateDisplay', 'btnDockCalendar'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('click', openCalendarHandler);
+      el.addEventListener('touchend', (e) => {
+        // Prevent ghost click delay on iOS Safari
+        openCalendarHandler(e);
+      }, { passive: false });
+    });
+
+    document.getElementById('btnDrawerCalendar')?.addEventListener('click', (e) => {
+      e?.preventDefault?.();
       TF.ui.closeMobileDrawer();
       TF.ui.openCalendarModal();
     });
@@ -162,7 +171,25 @@
 
     // Register Service Worker for PWA offline capability (only on http/https)
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        // If there's an updated worker waiting, activate it immediately
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                TF.ui.showToast('時間方塊已有新版本更新！正在自動刷新...', true);
+                setTimeout(() => location.reload(), 800);
+              }
+            });
+          }
+        });
+        // Check for updates immediately
+        reg.update().catch(() => {});
+      }).catch(() => {});
     }
   }
 

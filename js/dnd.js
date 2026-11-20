@@ -252,11 +252,11 @@
         };
 
         if (isTouch) {
-          // Hold 160ms OR drag upward immediately lifts the block onto the 24h timeline
+          // Hold 240ms OR drag upward immediately lifts the block onto the 24h timeline
           op.longPressTimer = setTimeout(() => {
             if (this.activeOp !== op || op.activated) return;
             this.activateTemplateDrag(op, this.lastPointer.x, this.lastPointer.y);
-          }, 160);
+          }, 240);
         }
 
         this.activeOp = op;
@@ -529,8 +529,8 @@
             startMinutes: op.dropStartMinutes,
             durationMinutes: op.template.defaultDuration || DEFAULT_DURATION
           });
-        } else if (!op.activated && !op.isSwiping) {
-          // User clicked or tapped the card without dragging -> Smart Click-to-Add!
+        } else if (!op.isSwiping) {
+          // User clicked, tapped, or lifted without dragging into timeline -> Smart Click-to-Add!
           const cardEl = document.querySelector(`[data-template-id="${op.template.id}"]`);
           if (cardEl) cardEl._lastQuickAdd = Date.now();
           TF.ui?.quickAddTemplateToTimeline?.(op.template.id);
