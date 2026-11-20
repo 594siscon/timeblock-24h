@@ -44,6 +44,7 @@
     // Calendar Modal Openers (Header, Mobile Dock & Mobile Drawer)
     const openCalendarHandler = (e) => {
       e?.preventDefault?.();
+      e?.stopPropagation?.();
       TF.ui.openCalendarModal();
     };
     document.getElementById('btnDateDisplay')?.addEventListener('click', openCalendarHandler);

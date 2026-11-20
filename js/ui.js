@@ -6,6 +6,8 @@
     MINUTES_PER_DAY,
     SNAP_MINUTES,
     DEFAULT_DURATION,
+    clamp,
+    snapMinutes,
     formatTime,
     formatDuration,
     formatHoursDecimal,
@@ -1183,7 +1185,8 @@
         scopeBadge = `本月（${targetDates.length} 天）`;
       } else {
         targetDates = [selectedDate];
-        rangeTitle = formatDateDisplay(selectedDate);
+        const disp = formatDateDisplay(selectedDate);
+        rangeTitle = disp.full || disp.short || selectedDate;
         scopeBadge = '今日';
       }
 
@@ -1991,13 +1994,23 @@
     }
 
     openMobileDrawer() {
-      this.mobileDrawerEl.classList.add('is-open');
-      this.mobileDrawerBackdropEl.hidden = false;
+      this.mobileDrawerEl?.classList.add('is-open');
+      if (this.mobileDrawerBackdropEl) {
+        this.mobileDrawerBackdropEl.hidden = false;
+        this.mobileDrawerBackdropEl.classList.add('is-open');
+      }
     }
 
     closeMobileDrawer() {
-      this.mobileDrawerEl.classList.remove('is-open');
-      this.mobileDrawerBackdropEl.hidden = true;
+      this.mobileDrawerEl?.classList.remove('is-open');
+      if (this.mobileDrawerBackdropEl) {
+        this.mobileDrawerBackdropEl.classList.remove('is-open');
+        setTimeout(() => {
+          if (!this.mobileDrawerBackdropEl.classList.contains('is-open')) {
+            this.mobileDrawerBackdropEl.hidden = true;
+          }
+        }, 200);
+      }
     }
 
     applyTheme() {

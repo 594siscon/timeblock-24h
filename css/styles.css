@@ -177,7 +177,12 @@ button {
   min-width: 112px;
   border-radius: 7px;
   cursor: pointer;
+  touch-action: manipulation;
   transition: background 0.15s;
+}
+
+.date-display-btn * {
+  pointer-events: none;
 }
 
 .date-display-btn:hover {
@@ -1816,7 +1821,7 @@ button {
   border-top: 1px solid var(--border-color);
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.08);
-  z-index: 35;
+  z-index: 50;
 }
 
 .mobile-dock-bar {
@@ -1918,6 +1923,16 @@ button {
   inset: 0;
   background: rgba(15, 23, 42, 0.45);
   z-index: 40;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.drawer-backdrop.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .mobile-drawer {
@@ -1969,11 +1984,15 @@ button {
   padding: 16px;
   z-index: 100;
   opacity: 0;
-  transition: opacity 0.18s ease;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, visibility 0.18s ease;
 }
 
 .modal-backdrop.is-open {
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .modal-card {
@@ -2240,12 +2259,16 @@ button {
   box-shadow: var(--shadow-lg);
   z-index: 200;
   opacity: 0;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
   max-width: calc(100vw - 32px);
 }
 
 .toast.is-visible {
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
   transform: translate(-50%, 0);
 }
 
